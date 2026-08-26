@@ -302,12 +302,9 @@ export default function Home() {
                 what the IRS collects.
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {VALIDATION.map((v) => {
-                  const diff =
-                    v.modelStatutory != null
-                      ? (v.modelStatutory - v.irsActual) / v.irsActual
-                      : null;
+                  const diff = (v.modelStatutory - v.irsActual) / v.irsActual;
                   return (
                     <div
                       key={v.fiscalYear}
@@ -320,22 +317,14 @@ export default function Home() {
                       <p className="text-3xl font-bold text-gray-900 tabular-nums mb-3">
                         {formatBillions(v.irsActual)}
                       </p>
-                      {v.modelStatutory != null && diff != null ? (
-                        <>
-                          <p className="text-sm text-gray-500">Model baseline</p>
-                          <p className="text-3xl font-bold text-primary-600 tabular-nums mb-3">
-                            {formatBillions(v.modelStatutory)}
-                          </p>
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 text-primary-700 tabular-nums">
-                            {diff >= 0 ? '+' : '−'}
-                            {Math.abs(diff * 100).toFixed(1)}% vs. actual
-                          </span>
-                        </>
-                      ) : (
-                        <p className="text-sm text-gray-400 mt-1">
-                          Model years begin in 2024; shown for trend context.
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-500">Model baseline</p>
+                      <p className="text-3xl font-bold text-primary-600 tabular-nums mb-3">
+                        {formatBillions(v.modelStatutory)}
+                      </p>
+                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 text-primary-700 tabular-nums">
+                        {diff >= 0 ? '+' : '−'}
+                        {Math.abs(diff * 100).toFixed(1)}% vs. actual
+                      </span>
                     </div>
                   );
                 })}

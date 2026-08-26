@@ -57,10 +57,9 @@ export interface ValidationYear {
   irsActual: number;
   /**
    * Model baseline for the matching calendar year with actual statutory
-   * credit-reduction rates applied ($), or null where the model years
-   * (2024+) do not overlap.
+   * credit-reduction rates applied ($).
    */
-  modelStatutory: number | null;
+  modelStatutory: number;
 }
 
 /**
@@ -71,7 +70,6 @@ export interface ValidationYear {
  * calendar-year accrued liability.
  */
 export const VALIDATION: ValidationYear[] = [
-  { fiscalYear: 2023, irsActual: 7946725000, modelStatutory: null },
   { fiscalYear: 2024, irsActual: 8130484000, modelStatutory: 8417777224 },
   { fiscalYear: 2025, irsActual: 8776869000, modelStatutory: 8341294315 },
 ];
