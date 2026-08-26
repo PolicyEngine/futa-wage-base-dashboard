@@ -6,10 +6,10 @@
  * rounded to the nearest $100), holding the 6.0% rate and maximum 5.4%
  * credit (0.6% net) constant.
  *
- * Computed with policyengine-us 1.808.0 (including the merged #9326 FUTA
- * credit-reduction fix) on the Microcosm US 2024 national dataset
- * (Build P sparse release populace-us-2024-buildp-sparse-rmloss100-cae8640,
- * 2026-07-28). Revenue basis: 0.6% net rate for all employers.
+ * Computed with policyengine-us 1.808.0 on the Microcosm US 2024 national
+ * dataset (Build P sparse release
+ * populace-us-2024-buildp-sparse-rmloss100-cae8640, 2026-07-28).
+ * Revenue basis: 0.6% net rate for all employers.
  */
 
 export interface YearResult {
@@ -44,11 +44,37 @@ export const RESULTS: YearResult[] = [
 export const TEN_YEAR_TOTAL = RESULTS.reduce((sum, r) => sum + r.additional, 0);
 
 export const MODEL_INFO = {
-  policyengineUs: '1.808.0 (with merged credit-reduction fix, PR #9326)',
+  policyengineUs: '1.808.0',
   dataset:
     'Microcosm US 2024 national dataset (formerly Populace), Build P sparse release',
   datasetRelease: 'populace-us-2024-buildp-sparse-rmloss100-cae8640-20260728T011454Z',
 };
+
+export interface ValidationYear {
+  /** Federal fiscal year of the IRS figure. */
+  fiscalYear: number;
+  /** Actual FUTA gross collections, IRS Data Book Table 1 ($). */
+  irsActual: number;
+  /**
+   * Model baseline for the matching calendar year with actual statutory
+   * credit-reduction rates applied ($), or null where the model years
+   * (2024+) do not overlap.
+   */
+  modelStatutory: number | null;
+}
+
+/**
+ * Actual FUTA collections (IRS Data Book Table 1, "Unemployment insurance"
+ * gross collections line) vs. the model baseline run with the statutory
+ * credit-reduction rates in effect each year. IRS figures are fiscal-year
+ * cash collections and include penalties and interest; model figures are
+ * calendar-year accrued liability.
+ */
+export const VALIDATION: ValidationYear[] = [
+  { fiscalYear: 2023, irsActual: 7946725000, modelStatutory: null },
+  { fiscalYear: 2024, irsActual: 8130484000, modelStatutory: 8417777224 },
+  { fiscalYear: 2025, irsActual: 8776869000, modelStatutory: 8341294315 },
+];
 
 export function buildCsv(): string {
   const header =
