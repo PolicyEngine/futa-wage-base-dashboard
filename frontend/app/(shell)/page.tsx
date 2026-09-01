@@ -80,8 +80,10 @@ export default function Home() {
     'Additional revenue': r.additional,
   }));
 
-  const perWorker = selected.additional / selected.workersAbove7k;
-  const maxPerWorker = 0.006 * (selected.wageBase - 7000);
+  const basePerWorker = 0.006 * 7000;
+  const perWorkerIncrease = selected.additional / selected.workersAbove7k;
+  const avgPerWorker = basePerWorker + perWorkerIncrease;
+  const maxPerWorker = 0.006 * selected.wageBase;
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -249,9 +251,10 @@ export default function Home() {
               </div>
 
               <p className="text-sm text-gray-700 font-semibold mb-6">
-                The reform raises employer-side FUTA liability by an average of $
-                {perWorker.toFixed(0)} per affected worker (maximum ${maxPerWorker.toFixed(0)} for
-                a worker at or above the {formatDollars(selected.wageBase)} base).
+                The reform raises the average employer-side FUTA liability per affected worker
+                from ${basePerWorker.toFixed(0)} to ${avgPerWorker.toFixed(0)}, a $
+                {perWorkerIncrease.toFixed(0)} increase (maximum ${maxPerWorker.toFixed(0)} for a
+                worker at or above the {formatDollars(selected.wageBase)} base).
               </p>
 
               {/* Chart */}
