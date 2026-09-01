@@ -319,7 +319,9 @@ export default function Home() {
                       <p className="text-3xl font-bold text-gray-900 tabular-nums mb-3">
                         {formatBillions(v.irsActual)}
                       </p>
-                      <p className="text-sm text-gray-500">Model baseline</p>
+                      <p className="text-sm text-gray-500">
+                        Model, statutory credit-reduction rates
+                      </p>
                       <p className="text-3xl font-bold text-primary-600 tabular-nums mb-3">
                         {formatBillions(v.modelStatutory)}
                       </p>
@@ -349,9 +351,14 @@ export default function Home() {
                 </p>
               </div>
 
-              <p className="text-xs text-gray-500 mt-3">
-                IRS figures are fiscal-year cash collections; model figures are calendar-year
-                accrued liability, so timing differs slightly.
+              <p className="text-sm text-gray-600 mt-3">
+                IRS figures are fiscal-year cash collections while the model&apos;s are
+                calendar-year liability, and that timing gap is why the two series move in
+                opposite directions between 2024 and 2025. A tax year&apos;s credit-reduction
+                surcharges are largely paid with the Form 940 filed the following January, so
+                New York&apos;s 2024 surcharge lands in the fiscal 2025 actual. The model&apos;s
+                2025 figure excludes New York, which repaid its federal loan that year, which is
+                why it sits below collections that still carry New York&apos;s final surcharge.
               </p>
             </section>
 
@@ -408,17 +415,40 @@ export default function Home() {
                     {MODEL_INFO.datasetRelease}
                   </code>
                   ), a ~57,000-household national survey dataset calibrated to more than 30,000
-                  administrative targets. Future years use CBO-based economic uprating. FUTA
-                  liability is computed per worker as min(gross wages, wage base) &times; 0.6%,
-                  the net rate assuming every employer receives the full 5.4% credit for state
-                  unemployment taxes.
+                  administrative targets. The model simulates each year from 2026 to 2035 once,
+                  uprating the 2024 survey wages to future years with CBO&apos;s economic
+                  projections.
+                </p>
+                <p>
+                  <strong>How the revenue is computed.</strong> Within each simulated year, a
+                  worker&apos;s FUTA liability is 0.6% of their wages (the person-level{' '}
+                  <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">
+                    payroll_tax_gross_wages
+                  </code>{' '}
+                  variable) up to the taxable wage base; 0.6% is the net rate assuming every
+                  employer receives the full 5.4% credit for state unemployment taxes. Because
+                  the tax is linear in the wage base, the baseline and the reform read from the
+                  same simulated wage distribution: revenue under each scenario is the weighted
+                  sum of min(wages, base) &times; 0.6%, so no separate reform simulation is
+                  needed. The calculation script and its raw output are in the{' '}
+                  <a
+                    href="https://github.com/PolicyEngine/futa-wage-base-dashboard/tree/main/analysis"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-600 hover:text-primary-700 underline"
+                  >
+                    dashboard&apos;s GitHub repository
+                  </a>
+                  .
                 </p>
                 <p>
                   <strong>Indexing.</strong> The $43,000 base applies in 2026. Later years grow
                   with the CPI-U using CBO&apos;s February 2026 projections, following the
                   convention that the prior February&apos;s index sets the year&apos;s parameter,
-                  rounded to the nearest $100. The PolicyEngine web app does not expose parameter
-                  indexing, so this analysis scripts the Python model directly.
+                  rounded to the nearest $100. These are projected index values; under an enacted
+                  reform, indexation would follow realized inflation. The PolicyEngine web app
+                  does not expose parameter indexing, so this analysis scripts the Python model
+                  directly.
                 </p>
                 <p>
                   <strong>Static estimate.</strong> No behavioral response is modeled. FUTA is an

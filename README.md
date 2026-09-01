@@ -12,7 +12,7 @@ Estimates the federal revenue from raising the FUTA taxable wage base from $7,00
 
 ## Method
 
-Computed with [policyengine-us](https://github.com/PolicyEngine/policyengine-us) 1.808.0 (including the credit-reduction rate corrections merged in [PR #9326](https://github.com/PolicyEngine/policyengine-us/pull/9326)) on the Microcosm US 2024 national dataset (Build P). FUTA liability is linear in the wage base, so each year needs only one baseline simulation: revenue = Σ weight × min(gross wages, base) × 0.6%. Estimates are precomputed and embedded in `frontend/lib/data.ts`; the dashboard itself is fully static.
+Computed with [policyengine-us](https://github.com/PolicyEngine/policyengine-us) 1.808.0 (including the credit-reduction rate corrections merged in [PR #9326](https://github.com/PolicyEngine/policyengine-us/pull/9326)) on the Microcosm US 2024 national dataset (Build P). FUTA liability is linear in the wage base, so each year needs only one baseline simulation: revenue = Σ weight × min(gross wages, base) × 0.6%. The calculation script and its raw output live in [`analysis/`](analysis/); the resulting estimates are embedded in `frontend/lib/data.ts`, so the dashboard itself is fully static.
 
 Benchmarked against actual FUTA collections from IRS Data Book Table 1 ($7.9B FY2023, $8.1B FY2024, $8.8B FY2025). The dashboard baseline (~$7B) excludes credit-reduction surcharges from states with outstanding federal UI loans by design; see the methodology section on the dashboard.
 
