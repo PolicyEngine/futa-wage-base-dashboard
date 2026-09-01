@@ -248,12 +248,10 @@ export default function Home() {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-500 mb-6">
-                {(selected.workersAbove7k / 1e6).toFixed(0)} million workers earn above the
-                current $7,000 base in {selected.year}. The reform raises employer-side FUTA
-                liability by an average of ${perWorker.toFixed(0)} per affected worker (maximum $
-                {maxPerWorker.toFixed(0)} for a worker at or above the{' '}
-                {formatDollars(selected.wageBase)} base).
+              <p className="text-sm text-gray-700 font-semibold mb-6">
+                The reform raises employer-side FUTA liability by an average of $
+                {perWorker.toFixed(0)} per affected worker (maximum ${maxPerWorker.toFixed(0)} for
+                a worker at or above the {formatDollars(selected.wageBase)} base).
               </p>
 
               {/* Chart */}
