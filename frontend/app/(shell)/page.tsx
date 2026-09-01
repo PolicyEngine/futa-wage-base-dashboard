@@ -336,10 +336,10 @@ export default function Home() {
                   The revenue estimates on the impact tab hold every employer at the flat 0.6%
                   net rate in both the baseline and the reform, so the additional-revenue figure
                   isolates the wage-base change. Actual collections run higher because they also
-                  include credit-reduction surcharges &mdash; the extra 0.3 to 4.5 percentage
-                  points employers pay in states carrying unpaid federal UI loans (recently
-                  California, New York, and the U.S. Virgin Islands, about $1.7 billion per
-                  year) &mdash; plus penalties and interest. Those surcharges end when states
+                  include penalties, interest, and credit-reduction surcharges: the extra 0.3 to
+                  4.5 percentage points employers pay in states carrying unpaid federal UI loans
+                  (recently California, New York, and the U.S. Virgin Islands, about $1.7
+                  billion per year). Those surcharges end when states
                   repay their loans, so carrying them through a ten-year projection would be
                   speculative.
                 </p>
@@ -378,9 +378,8 @@ export default function Home() {
                   </p>
                   <p className="text-sm text-gray-700">
                     Government agencies and 501(c)(3) nonprofit employers are exempt from FUTA,
-                    but their employees&apos; wages remain in the model&apos;s tax base &mdash;
-                    roughly a sixth of U.S. employment &mdash; so this choice overstates
-                    revenue.
+                    but their employees&apos; wages, roughly a sixth of U.S. employment, remain
+                    in the model&apos;s tax base, so this choice overstates revenue.
                   </p>
                 </div>
               </div>
