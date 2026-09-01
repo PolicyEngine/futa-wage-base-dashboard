@@ -252,11 +252,10 @@ export default function Home() {
 
               <p className="text-sm text-gray-700 font-semibold mb-6">
                 The reform raises the maximum employer-side FUTA liability from $
-                {basePerWorker.toFixed(0)} to ${maxPerWorker.toFixed(0)} for a worker at or above
+                {basePerWorker.toFixed(0)} to ${maxPerWorker.toFixed(0)} (a $
+                {(maxPerWorker - basePerWorker).toFixed(0)} increase) for a worker at or above
                 the {formatDollars(selected.wageBase)} base. The average liability per affected
-                worker rises from ${basePerWorker.toFixed(0)}, since every worker above the low
-                $7,000 base already pays the maximum, to ${avgPerWorker.toFixed(0)}, a $
-                {perWorkerIncrease.toFixed(0)} increase.
+                worker would be ${avgPerWorker.toFixed(0)} in {selected.year}.
               </p>
 
               {/* Chart */}
