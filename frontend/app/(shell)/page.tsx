@@ -396,11 +396,8 @@ export default function Home() {
               </div>
 
               <p className="text-sm text-gray-600 mt-4">
-                At the current $7,000 base these two biases roughly offset, which is why the
-                model baseline lands within a few percent of actual collections. At a $43,000
-                base the offset is likely less complete: the multi-job effect shrinks relative to
-                the much larger base, while the exempt-employment share stays roughly constant,
-                so the reform estimate is somewhat high on this margin.
+                These two caveats push in opposite directions, which could explain why the model
+                estimate comes close to actual IRS collections.
               </p>
             </section>
 
