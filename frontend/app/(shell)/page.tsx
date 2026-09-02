@@ -389,7 +389,7 @@ export default function Home() {
                   </p>
                   <p className="text-sm text-gray-700">
                     Government agencies and 501(c)(3) nonprofit employers are exempt from FUTA,
-                    but their employees&apos; wages, roughly a sixth of U.S. employment, remain
+                    but their employees&apos; wages, roughly a fifth of U.S. employment, remain
                     in the model&apos;s tax base, so this choice overstates revenue.
                   </p>
                 </div>
