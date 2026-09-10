@@ -45,8 +45,7 @@ export const TEN_YEAR_TOTAL = RESULTS.reduce((sum, r) => sum + r.additional, 0);
 
 export const MODEL_INFO = {
   policyengineUs: '1.808.0',
-  dataset:
-    'Microcosm US 2024 national dataset (formerly Populace), Build P sparse release',
+  dataset: 'Microcosm US 2024 national dataset, Build P sparse release',
   datasetRelease: 'populace-us-2024-buildp-sparse-rmloss100-cae8640-20260728T011454Z',
 };
 
