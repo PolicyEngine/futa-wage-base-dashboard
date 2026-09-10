@@ -304,6 +304,24 @@ export default function Home() {
                 what the IRS collects.
               </p>
 
+              <div className="bg-primary-50 border border-primary-100 rounded-lg p-5 mb-4">
+                <p className="text-sm font-semibold text-gray-900 mb-1">
+                  What the headline baseline measures
+                </p>
+                <p className="text-sm text-gray-700">
+                  The impact tab&apos;s baseline is projected FUTA revenue under current law: the
+                  $7,000 wage base with every employer at the flat 0.6% net rate, which is $6.8
+                  billion in 2026. The reform scenario applies the same 0.6% rate, so the
+                  additional-revenue figure isolates the wage-base change. Actual collections run
+                  higher because they also include penalties, interest, and credit-reduction
+                  surcharges: the extra 0.3 to 4.5 percentage points employers pay in states
+                  carrying unpaid federal UI loans (recently California, New York, and the U.S.
+                  Virgin Islands, about $1.7 billion per year). The projection excludes the
+                  surcharges: they end as states repay their federal loans, and future loan
+                  balances depend on state financing decisions the model does not forecast.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {VALIDATION.map((v) => {
                   const diff = (v.modelStatutory - v.irsActual) / v.irsActual;
@@ -334,31 +352,15 @@ export default function Home() {
                 })}
               </div>
 
-              <div className="bg-primary-50 border border-primary-100 rounded-lg p-5 mt-4">
-                <p className="text-sm font-semibold text-gray-900 mb-1">
-                  Why the headline baseline shows about $6.8 billion
-                </p>
-                <p className="text-sm text-gray-700">
-                  The revenue estimates on the impact tab hold every employer at the flat 0.6%
-                  net rate in both the baseline and the reform, so the additional-revenue figure
-                  isolates the wage-base change. Actual collections run higher because they also
-                  include penalties, interest, and credit-reduction surcharges: the extra 0.3 to
-                  4.5 percentage points employers pay in states carrying unpaid federal UI loans
-                  (recently California, New York, and the U.S. Virgin Islands, about $1.7
-                  billion per year). Those surcharges end when states
-                  repay their loans, so carrying them through a ten-year projection would be
-                  speculative.
-                </p>
-              </div>
-
               <p className="text-sm text-gray-600 mt-3">
-                IRS figures are fiscal-year cash collections while the model&apos;s are
-                calendar-year liability, and that timing gap is why the two series move in
-                opposite directions between 2024 and 2025. A tax year&apos;s credit-reduction
-                surcharges are largely paid with the Form 940 filed the following January, so
-                New York&apos;s 2024 surcharge lands in the fiscal 2025 actual. The model&apos;s
-                2025 figure excludes New York, which repaid its federal loan that year, which is
-                why it sits below collections that still carry New York&apos;s final surcharge.
+                The model applies each year&apos;s statutory credit-reduction rates: for 2024,
+                California (0.9%), New York (0.9%), and the U.S. Virgin Islands (4.2%); for
+                2025, California (1.2%) and the Virgin Islands (4.5%), with New York out after
+                repaying its federal loan. That is why the model&apos;s figure falls from 2024
+                to 2025 while actual collections rise: IRS figures are fiscal-year cash
+                collections, and a tax year&apos;s surcharges are largely paid with the Form 940
+                filed the following January, so New York&apos;s 2024 surcharge appears in the
+                fiscal 2025 actual.
               </p>
             </section>
 
@@ -366,8 +368,7 @@ export default function Home() {
             <section className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Key modeling choices</h2>
               <p className="text-gray-700 mb-6">
-                Two simplifications in how the model represents FUTA are large enough to shape
-                the results and deserve prominence.
+                The model simplifies FUTA in two ways that materially affect the estimates.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -396,8 +397,8 @@ export default function Home() {
               </div>
 
               <p className="text-sm text-gray-600 mt-4">
-                These two caveats push in opposite directions, which could explain why the model
-                estimate comes close to actual IRS collections.
+                These two simplifications bias the estimate in opposite directions; their net
+                effect is not quantified.
               </p>
             </section>
 
@@ -405,6 +406,31 @@ export default function Home() {
             <section className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Methodology and sources</h2>
               <div className="space-y-3 text-sm text-gray-700">
+                <p>
+                  <strong>Assumptions.</strong> The estimates assume that:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    Every employer pays the 0.6% net FUTA rate (6.0% minus the full 5.4% credit
+                    for state unemployment taxes) in both the baseline and the reform;
+                    credit-reduction surcharges are excluded from both.
+                  </li>
+                  <li>
+                    States raise their UI taxable wage bases to at least the federal base, as
+                    federal law requires, so the full credit applies to the whole base.
+                  </li>
+                  <li>The wage base applies once per worker per year, not per employer.</li>
+                  <li>
+                    Wages at FUTA-exempt employers (government agencies and 501(c)(3)
+                    nonprofits) are included in the tax base.
+                  </li>
+                  <li>Wages do not change in response to the tax (no behavioral response).</li>
+                  <li>The wage base grows along CBO&apos;s projected CPI-U path.</li>
+                </ul>
+                <p>
+                  The additional-revenue figure is reform revenue minus baseline revenue under
+                  these same assumptions.
+                </p>
                 <p>
                   <strong>Model and data.</strong> Estimates use policyengine-us{' '}
                   {MODEL_INFO.policyengineUs} with the {MODEL_INFO.dataset} (release{' '}
