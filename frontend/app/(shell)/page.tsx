@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -12,13 +12,35 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import ChartWatermark from '@/components/ChartWatermark';
-import { RESULTS, TEN_YEAR_TOTAL, MODEL_INFO, VALIDATION, buildCsv } from '@/lib/data';
+import {
+  RESULTS,
+  FIRST,
+  LAST,
+  TEN_YEAR_TOTAL,
+  MODEL_INFO,
+  VALIDATION,
+  SURCHARGES,
+  CPI_REFERENCE,
+  CURRENT_BASE,
+  NET_RATE,
+  EXEMPT_SHARE_LOW,
+  EXEMPT_SHARE_HIGH,
+  buildCsv,
+  CSV_FILENAME,
+} from '@/lib/data';
+import {
+  formatBillions,
+  formatBillionsLong,
+  formatDollars,
+  formatMillionDollars,
+  formatMillions,
+  formatMonth,
+  formatPercent,
+  formatSignedPercent,
+} from '@/lib/format';
+import { REPO_URL } from '@/lib/site';
 
 const TICK_STYLE = { fontFamily: 'var(--font-sans)', fontSize: 12 };
-
-const formatBillions = (value: number) => `$${(value / 1e9).toFixed(1)}B`;
-
-const formatDollars = (value: number) => `$${value.toLocaleString('en-US')}`;
 
 function ChartTooltip({
   active,
@@ -57,22 +79,89 @@ function downloadCsv() {
   const url = URL.createObjectURL(new Blob([buildCsv()], { type: 'text/csv' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'futa_wage_base_estimates.csv';
+  a.download = CSV_FILENAME;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 const TABS = [
-  { id: 'impact', label: 'Overview & impact' },
-  { id: 'validation', label: 'Validation' },
+  { id: 'estimates', label: 'Estimates' },
+  { id: 'validation', label: 'Validation and methods' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
+const SOURCES = [
+  {
+    href: 'https://www.ssa.gov/cgi-bin/netcomp.cgi?year=2023',
+    text: 'Social Security Administration, Wage statistics for 2023 (median net compensation $43,222.81)',
+  },
+  {
+    href: 'https://www.irs.gov/statistics/soi-tax-stats-collections-and-refunds-by-type-of-tax-irs-data-book-table-1-1',
+    text: 'IRS Data Book Table 1-1 (Table 1 before 2025), Collections and refunds by type of tax, unemployment insurance line',
+  },
+  {
+    href: 'https://fiscaldata.treasury.gov/static-data/published-reports/mts/MonthlyTreasuryStatement_202509.pdf',
+    text: 'Treasury, Monthly Treasury Statement, September 2025 (federal unemployment taxes by month)',
+  },
+  {
+    href: 'https://www.irs.gov/pub/irs-pdf/i940.pdf',
+    text: 'IRS, Instructions for Form 940 (deposit schedule and credit-reduction payment timing)',
+  },
+  {
+    href: 'https://oui.doleta.gov/unemploy/futa_credit.asp',
+    text: 'U.S. Department of Labor, FUTA credit reductions by state and year',
+  },
+  {
+    href: 'https://www.law.cornell.edu/uscode/text/26/3306',
+    text: '26 U.S.C. 3306, FUTA definitions (exempt employment in subsection (c))',
+  },
+  {
+    href: 'https://www.bls.gov/ces/',
+    text: 'BLS, Current Employment Statistics (government and total nonfarm employment)',
+  },
+  {
+    href: 'https://www.bls.gov/bdm/nonprofits/nonprofits.htm',
+    text: 'BLS, Research data on the nonprofit sector (501(c)(3) employment, 2022)',
+  },
+  {
+    href: 'https://www.cbo.gov/budget-options/2018/54809',
+    text: 'CBO, Increase taxes that finance the federal share of the unemployment insurance system (December 2018)',
+  },
+  {
+    href: 'https://home.treasury.gov/system/files/131/General-Explanations-FY2017.pdf',
+    text: 'Treasury, General explanations of the administration’s FY2017 revenue proposals (FUTA base expansion)',
+  },
+  {
+    href: 'https://www.cbo.gov/publication/61179',
+    text: 'CBO, Unemployment insurance: budgetary history and projections (January 2025)',
+  },
+  {
+    href: 'https://www.cbo.gov/publication/58549',
+    text: 'CBO, How CBO and JCT account for the income and payroll tax offset (November 2022)',
+  },
+  {
+    href: 'https://www.jct.gov/publications/2016/jcx-89-16/',
+    text: 'JCT, JCX-89-16, Modeling the offset for payroll tax proposals (November 2016)',
+  },
+  {
+    href: 'https://www.congress.gov/crs-product/R44527',
+    text: 'CRS R44527, The fundamentals of the Federal Unemployment Tax (2016)',
+  },
+];
+
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabId>('impact');
-  const [selectedYear, setSelectedYear] = useState(RESULTS[0].year);
-  const selected = RESULTS.find((r) => r.year === selectedYear) ?? RESULTS[0];
+  const [activeTab, setActiveTab] = useState<TabId>('estimates');
+  const [selectedYear, setSelectedYear] = useState(FIRST.year);
+  const selected = RESULTS.find((r) => r.year === selectedYear) ?? FIRST;
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
+    estimates: null,
+    validation: null,
+  });
+  const chartCaptionId = useId();
+  const yearLegendId = useId();
 
   const chartData = RESULTS.map((r) => ({
     year: r.year,
@@ -80,20 +169,40 @@ export default function Home() {
     'Additional revenue': r.additional,
   }));
 
-  const basePerWorker = 0.006 * 7000;
-  const perWorkerIncrease = selected.additional / selected.workersAbove7k;
-  const avgPerWorker = basePerWorker + perWorkerIncrease;
-  const maxPerWorker = 0.006 * selected.wageBase;
+  const basePerWorker = NET_RATE * CURRENT_BASE;
+  const maxPerWorker = NET_RATE * selected.wageBase;
+  const increasePerAffected = selected.additional / selected.workersAbove7k;
+  const avgPerAffected = basePerWorker + increasePerAffected;
+  const affectedShare = selected.workersAbove7k / selected.workersWithWages;
+  const reformMultiple = FIRST.reform / FIRST.baseline;
+
+  const surcharge2024 = SURCHARGES[2024];
+  const surcharge2025 = SURCHARGES[2025];
+
+  function onTabKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    const ids = TABS.map((t) => t.id);
+    const i = ids.indexOf(activeTab);
+    let next: TabId | null = null;
+    if (e.key === 'ArrowRight') next = ids[(i + 1) % ids.length];
+    if (e.key === 'ArrowLeft') next = ids[(i - 1 + ids.length) % ids.length];
+    if (e.key === 'Home') next = ids[0];
+    if (e.key === 'End') next = ids[ids.length - 1];
+    if (next) {
+      e.preventDefault();
+      setActiveTab(next);
+      tabRefs.current[next]?.focus();
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen">
       {/* Hero band */}
-      <div className="bg-primary-500 text-white py-8 px-4 shadow-md">
+      <div className="bg-teal-500 text-white py-8 px-4 shadow-md">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-4xl font-bold mb-2">FUTA taxable wage base dashboard</h1>
           <p className="text-lg opacity-90">
-            Federal revenue effects of raising the FUTA taxable wage base from $7,000 to $43,000
-            in 2026 and indexing it to the CPI-U
+            FUTA revenue effects of raising the taxable wage base from {formatDollars(CURRENT_BASE)}{' '}
+            to {formatDollars(FIRST.wageBase)} in {FIRST.year} and indexing it to inflation (CPI-U)
           </p>
         </div>
       </div>
@@ -104,12 +213,20 @@ export default function Home() {
           {TABS.map((tab) => (
             <button
               key={tab.id}
+              ref={(el) => {
+                tabRefs.current[tab.id] = el;
+              }}
+              type="button"
               role="tab"
+              id={`tab-${tab.id}`}
               aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+              onKeyDown={onTabKeyDown}
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 ${
                 activeTab === tab.id
-                  ? 'bg-primary-500 text-white shadow-sm'
+                  ? 'bg-teal-500 text-white shadow-sm'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
@@ -118,45 +235,69 @@ export default function Home() {
           ))}
         </div>
 
-        {activeTab === 'impact' && (
-          <>
+        {activeTab === 'estimates' && (
+          <div
+            role="tabpanel"
+            id="panel-estimates"
+            aria-labelledby="tab-estimates"
+            tabIndex={0}
+            className="space-y-6 focus-visible:outline-none"
+          >
             {/* Overview */}
             <section className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Overview</h2>
               <div className="space-y-3 text-gray-700">
                 <p>
-                  The Federal Unemployment Tax Act (FUTA) levies a 6.0% tax on the first $7,000
-                  of each worker&apos;s annual wages, reduced to an effective 0.6% for employers
-                  that receive the full 5.4% credit for paying state unemployment taxes on time.
-                  The $7,000 taxable wage base has not changed since 1983.
+                  The Federal Unemployment Tax Act (FUTA) taxes employers 6.0% on the first{' '}
+                  {formatDollars(CURRENT_BASE)} each employee earns in a year. Employers that pay
+                  their state unemployment taxes on time receive a credit of up to 5.4 percentage
+                  points, so most pay a net 0.6%, at most {formatDollars(basePerWorker)} per
+                  worker per year. The {formatDollars(CURRENT_BASE)} taxable wage base has not
+                  changed since 1983. FUTA revenue pays for state administration of unemployment
+                  insurance, half the cost of Extended Benefits, and loans to states whose
+                  unemployment trust funds run short.
                 </p>
                 <p>
-                  This dashboard estimates the federal revenue raised by increasing the wage base
-                  to $43,000 in 2026 and indexing it to the Consumer Price Index for All Urban
-                  Consumers (CPI-U) thereafter, rounded to the nearest $100, while holding the
-                  6.0% rate and maximum 5.4% credit constant. Under CBO&apos;s inflation
-                  projections, the base reaches $53,600 by 2035.
+                  This dashboard estimates the FUTA revenue from raising the wage base to{' '}
+                  {formatDollars(FIRST.wageBase)} in {FIRST.year} and then indexing it each year
+                  to the Consumer Price Index for All Urban Consumers (CPI-U), rounding the base
+                  to the nearest $100, while holding the 6.0% rate and the 5.4% maximum credit
+                  constant. The {formatDollars(FIRST.wageBase)} figure is roughly the median
+                  annual wage of U.S. workers in 2023 ($43,223, per the Social Security
+                  Administration&apos;s wage statistics). Under CBO&apos;s inflation projections
+                  the base reaches {formatDollars(LAST.wageBase)} in {LAST.year}.
+                </p>
+                <p>
+                  All years on this tab are calendar (tax) years. The estimates count only the
+                  FUTA line; state unemployment taxes, which would also rise because states must
+                  match the federal base, are discussed under Validation and methods.
                 </p>
               </div>
 
-              {/* Headline stats — always visible */}
+              {/* Headline stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <div className="bg-primary-50 border border-primary-100 rounded-lg p-5">
+                <div className="bg-teal-50 border border-teal-100 rounded-lg p-5">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Additional revenue, 2026&ndash;2035
+                    Additional revenue, {FIRST.year} to {LAST.year}
                   </p>
-                  <p className="text-3xl font-bold text-primary-600 tabular-nums">
+                  <p className="text-3xl font-bold text-teal-600 tabular-nums">
                     {formatBillions(TEN_YEAR_TOTAL)}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">Ten-year total, static estimate</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Ten calendar years; assumes wages do not respond to the tax
+                  </p>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    First year (2026)
+                    First year ({FIRST.year})
                   </p>
-                  <p className="text-3xl font-bold text-gray-900 tabular-nums">+$26.4B</p>
+                  <p className="text-3xl font-bold text-gray-900 tabular-nums">
+                    +{formatBillions(FIRST.additional)}
+                  </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    FUTA revenue rises from $6.8B to $33.3B, a 4.9&times; increase
+                    FUTA revenue rises from {formatBillions(FIRST.baseline)} to{' '}
+                    {formatBillions(FIRST.reform)}, {reformMultiple.toFixed(1)} times the
+                    current-law level
                   </p>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
@@ -164,9 +305,11 @@ export default function Home() {
                     Wage base path
                   </p>
                   <p className="text-3xl font-bold text-gray-900 tabular-nums">
-                    $43,000 &rarr; $53,600
+                    {formatDollars(FIRST.wageBase)} to {formatDollars(LAST.wageBase)}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">2026 to 2035, indexed to the CPI-U</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {FIRST.year} to {LAST.year}, indexed to the CPI-U
+                  </p>
                 </div>
               </div>
             </section>
@@ -174,45 +317,53 @@ export default function Home() {
             {/* Budgetary impact */}
             <section className="bg-white rounded-lg shadow-md p-6">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Budgetary impact by year</h2>
+                <h2 className="text-2xl font-bold text-gray-900">FUTA revenue by year</h2>
                 <button
+                  type="button"
                   onClick={downloadCsv}
-                  className="px-4 py-2 rounded-lg font-semibold text-white bg-primary-500 hover:bg-primary-600 active:bg-primary-700 transition-colors shadow-sm text-sm"
+                  className="px-4 py-2 rounded-lg font-semibold text-white bg-teal-500 hover:bg-teal-600 active:bg-teal-700 transition-colors shadow-sm text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
                 >
                   Download CSV
                 </button>
               </div>
 
-              {/* Year bubbles */}
-              <div
-                className="flex flex-wrap items-center gap-2 mb-6"
-                role="tablist"
-                aria-label="Select year"
-              >
-                {RESULTS.map((r) => (
-                  <button
-                    key={r.year}
-                    role="tab"
-                    aria-selected={selectedYear === r.year}
-                    onClick={() => setSelectedYear(r.year)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors tabular-nums ${
-                      selectedYear === r.year
-                        ? 'bg-primary-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {r.year}
-                  </button>
-                ))}
-              </div>
+              {/* Year picker */}
+              <fieldset className="mb-6">
+                <legend id={yearLegendId} className="sr-only">
+                  Select a year
+                </legend>
+                <div className="flex flex-wrap items-center gap-2">
+                  {RESULTS.map((r) => (
+                    <label key={r.year} className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="year"
+                        value={r.year}
+                        checked={selectedYear === r.year}
+                        onChange={() => setSelectedYear(r.year)}
+                        className="sr-only peer"
+                      />
+                      <span
+                        className={`inline-block px-4 py-1.5 rounded-full text-sm font-medium transition-colors tabular-nums peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-teal-700 ${
+                          selectedYear === r.year
+                            ? 'bg-teal-500 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {r.year}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
 
               {/* Selected year detail */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-primary-50 rounded-lg p-4">
+                <div className="bg-teal-50 rounded-lg p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
                     Additional revenue
                   </p>
-                  <p className="text-2xl font-bold text-primary-600 tabular-nums">
+                  <p className="text-2xl font-bold text-teal-600 tabular-nums">
                     +{formatBillions(selected.additional)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">vs. current law in {selected.year}</p>
@@ -225,7 +376,9 @@ export default function Home() {
                     {formatDollars(selected.wageBase)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    CPI-U index {selected.cpiU.toFixed(1)}
+                    {selected.year === FIRST.year
+                      ? 'Set by the reform'
+                      : `Prior-year CPI-U ${selected.cpiUPriorYearAverage.toFixed(1)}`}
                   </p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -235,7 +388,9 @@ export default function Home() {
                   <p className="text-2xl font-bold text-gray-900 tabular-nums">
                     {formatBillions(selected.baseline)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">$7,000 base, 0.6% net rate</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatDollars(CURRENT_BASE)} base, 0.6% net rate
+                  </p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
@@ -245,23 +400,38 @@ export default function Home() {
                     {formatBillions(selected.reform)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {(selected.reform / selected.baseline).toFixed(1)}&times; baseline
+                    {(selected.reform / selected.baseline).toFixed(1)} times baseline
                   </p>
                 </div>
               </div>
 
-              <p className="text-sm text-gray-700 font-semibold mb-6">
-                The reform raises the maximum employer-side FUTA liability from $
-                {basePerWorker.toFixed(0)} to ${maxPerWorker.toFixed(0)} (a $
-                {(maxPerWorker - basePerWorker).toFixed(0)} increase) for a worker at or above
-                the {formatDollars(selected.wageBase)} base. The average liability per affected
-                worker would be ${avgPerWorker.toFixed(0)} in {selected.year}.
+              <p className="text-sm text-gray-700 mb-6">
+                Under current law an employer owes at most {formatDollars(basePerWorker)} a year
+                in FUTA tax for each worker (0.6% of {formatDollars(CURRENT_BASE)}). Under the
+                reform the maximum rises to {formatDollars(maxPerWorker)} (0.6% of{' '}
+                {formatDollars(selected.wageBase)}), a {formatDollars(maxPerWorker - basePerWorker)}{' '}
+                increase, for every worker earning {formatDollars(selected.wageBase)} or more in{' '}
+                {selected.year}. Averaged over the {formatMillions(selected.workersAbove7k)}{' '}
+                workers earning more than {formatDollars(CURRENT_BASE)} ({formatPercent(affectedShare, 0)}{' '}
+                of the {formatMillions(selected.workersWithWages)} people with any wages), the
+                liability would be {formatDollars(avgPerAffected)} per worker, up{' '}
+                {formatDollars(increasePerAffected)} from today.
               </p>
 
               {/* Chart */}
-              <div className="relative">
+              <figure className="relative" aria-labelledby={chartCaptionId}>
+                <figcaption id={chartCaptionId} className="sr-only">
+                  FUTA revenue by calendar year, {FIRST.year} to {LAST.year}, in billions of
+                  dollars: revenue at the current {formatDollars(CURRENT_BASE)} base plus the
+                  additional revenue from the {formatDollars(FIRST.wageBase)} indexed base. The
+                  CSV download has the underlying numbers.
+                </figcaption>
                 <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 20, bottom: 5 }}>
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 32, bottom: 5 }}
+                    accessibilityLayer
+                  >
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
@@ -272,133 +442,211 @@ export default function Home() {
                       tickFormatter={formatBillions}
                       tick={TICK_STYLE}
                       stroke="var(--chart-axis)"
+                      label={{
+                        value: 'FUTA revenue ($ billions)',
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: -20,
+                        style: { ...TICK_STYLE, textAnchor: 'middle', fill: 'var(--text-body)' },
+                      }}
                     />
                     <Tooltip content={<ChartTooltip />} />
                     <Legend wrapperStyle={{ fontFamily: 'var(--font-sans)', fontSize: 13 }} />
-                    <Bar dataKey="Baseline" stackId="a" fill="var(--chart-negative)" />
+                    <Bar dataKey="Baseline" stackId="a" fill="var(--chart-baseline)" />
                     <Bar
                       dataKey="Additional revenue"
                       stackId="a"
-                      fill="var(--chart-positive)"
+                      fill="var(--chart-additional)"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
                 </ResponsiveContainer>
                 <ChartWatermark />
-              </div>
+              </figure>
             </section>
-          </>
+          </div>
         )}
 
         {activeTab === 'validation' && (
-          <>
-            {/* Estimates vs actual collections */}
+          <div
+            role="tabpanel"
+            id="panel-validation"
+            aria-labelledby="tab-validation"
+            tabIndex={0}
+            className="space-y-6 focus-visible:outline-none"
+          >
+            {/* Two baselines */}
             <section className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Model estimates vs. actual collections
+                Model baseline vs. IRS collections
               </h2>
-              <p className="text-gray-700 mb-6">
-                The IRS Data Book reports actual FUTA collections each fiscal year. For the years
-                that overlap the model (2024 onward), the comparison below runs the model&apos;s
-                baseline with the statutory credit-reduction rates actually in effect, matching
-                what the IRS collects.
-              </p>
+              <div className="space-y-3 text-gray-700">
+                <p>
+                  The Estimates tab&apos;s baseline is FUTA revenue at the current{' '}
+                  {formatDollars(CURRENT_BASE)} wage base with every employer at the full 5.4%
+                  credit, {formatBillionsLong(FIRST.baseline)} in {FIRST.year}. The reform
+                  applies the same 0.6% net rate, so the additional-revenue figure isolates the
+                  wage-base change.
+                </p>
+                <p>
+                  IRS collections run higher. They include penalties and interest, and they
+                  include credit-reduction surcharges: the extra 0.3 percentage points or more,
+                  rising each year, that employers owe in a state with an unpaid federal
+                  unemployment-insurance loan. In 2024 California and New York each owed 0.9
+                  points and the Virgin Islands 4.2; in 2025 California owed 1.2 points and the
+                  Virgin Islands 4.5, with New York out after repaying its loan in June 2025. The
+                  model puts the California and New York surcharges at{' '}
+                  {formatBillionsLong(surcharge2024)} for 2024 and{' '}
+                  {formatBillionsLong(surcharge2025)} for 2025. The dataset covers the 50 states
+                  and DC, so it has no Virgin Islands employers. The projection excludes
+                  surcharges because they end as states repay their loans, and future loan
+                  balances depend on state financing decisions the model does not forecast.
+                </p>
+                <p>
+                  IRS figures are federal fiscal-year cash (October through September), gross of
+                  refunds. Employers deposit the base tax quarterly and pay a tax year&apos;s
+                  credit-reduction surcharge with the fourth-quarter deposit due January 31 of the
+                  following year, so fiscal year t holds roughly the base tax for calendar year t
+                  plus the surcharge for calendar year t&minus;1. The model figures below are
+                  built the same way. Timing within the year is approximate: about a quarter of
+                  a calendar year&apos;s base tax is deposited after September 30.
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                 {VALIDATION.map((v) => {
-                  const diff = (v.modelStatutory - v.irsActual) / v.irsActual;
+                  const diff = (v.modelFiscalYear - v.irsGross) / v.irsGross;
                   return (
                     <div
                       key={v.fiscalYear}
                       className="bg-gray-50 border border-gray-200 rounded-lg p-5"
                     >
                       <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-                        Fiscal year {v.fiscalYear}
+                        Fiscal year {v.fiscalYear} (Oct {v.fiscalYear - 1} to Sep {v.fiscalYear})
                       </p>
-                      <p className="text-sm text-gray-500">IRS actual collections</p>
-                      <p className="text-3xl font-bold text-gray-900 tabular-nums mb-3">
-                        {formatBillions(v.irsActual)}
+                      <p className="text-sm text-gray-500">IRS gross collections</p>
+                      <p className="text-3xl font-bold text-gray-900 tabular-nums mb-1">
+                        {formatBillions(v.irsGross)}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        Model, statutory credit-reduction rates
+                      <p className="text-xs text-gray-500 mb-3">
+                        Before refunds of {formatMillionDollars(v.irsRefunds)}; includes penalties
+                        and interest
                       </p>
-                      <p className="text-3xl font-bold text-primary-600 tabular-nums mb-3">
-                        {formatBillions(v.modelStatutory)}
+                      <p className="text-sm text-gray-500">Model, fiscal-year basis</p>
+                      <p className="text-3xl font-bold text-teal-600 tabular-nums mb-1">
+                        {formatBillions(v.modelFiscalYear)}
                       </p>
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 text-primary-700 tabular-nums">
-                        {diff >= 0 ? '+' : '−'}
-                        {Math.abs(diff * 100).toFixed(1)}% vs. actual
+                      <p className="text-xs text-gray-500 mb-3">
+                        0.6% base tax for {v.fiscalYear} ({formatBillions(v.modelFlatCalendarYear)}
+                        ) plus the {v.fiscalYear - 1} surcharge (
+                        {formatBillions(v.modelSurchargePriorYear)}
+                        {v.priorYearModeled
+                          ? ''
+                          : `, ${v.fiscalYear - 1} rates applied to the 2024 wage distribution because the dataset has no ${v.fiscalYear - 1} weights`}
+                        )
+                      </p>
+                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-teal-100 text-teal-700 tabular-nums">
+                        Model {formatSignedPercent(diff)} vs. IRS
                       </span>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="bg-primary-50 border border-primary-100 rounded-lg p-5 mt-4">
-                <p className="text-sm font-semibold text-gray-900 mb-1">
-                  Why the headline baseline shows about $6.8 billion
-                </p>
-                <p className="text-sm text-gray-700">
-                  The revenue estimates on the impact tab hold every employer at the flat 0.6%
-                  net rate in both the baseline and the reform, so the additional-revenue figure
-                  isolates the wage-base change. Actual collections run higher because they also
-                  include penalties, interest, and credit-reduction surcharges: the extra 0.3 to
-                  4.5 percentage points employers pay in states carrying unpaid federal UI loans
-                  (recently California, New York, and the U.S. Virgin Islands, about $1.7
-                  billion per year). Those surcharges end when states
-                  repay their loans, so carrying them through a ten-year projection would be
-                  speculative.
-                </p>
-              </div>
-
               <p className="text-sm text-gray-600 mt-3">
-                IRS figures are fiscal-year cash collections while the model&apos;s are
-                calendar-year liability, and that timing gap is why the two series move in
-                opposite directions between 2024 and 2025. A tax year&apos;s credit-reduction
-                surcharges are largely paid with the Form 940 filed the following January, so
-                New York&apos;s 2024 surcharge lands in the fiscal 2025 actual. The model&apos;s
-                2025 figure excludes New York, which repaid its federal loan that year, which is
-                why it sits below collections that still carry New York&apos;s final surcharge.
+                The model runs a few percent below collections in both years. Two things it
+                leaves out push in opposite directions (next section); penalties and interest,
+                which the IRS does not break out, are also in the IRS line and not in the model.
               </p>
             </section>
 
             {/* Key modeling choices */}
             <section className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Key modeling choices</h2>
-              <p className="text-gray-700 mb-6">
-                Two simplifications in how the model represents FUTA are large enough to shape
-                the results and deserve prominence.
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Two simplifications that shape the estimates
+              </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-5">
                   <p className="text-sm font-bold text-gray-900 mb-2">
-                    Employer tax computed on worker wages
+                    One wage base per worker, not per employer
                   </p>
                   <p className="text-sm text-gray-700">
-                    FUTA is levied on employers, with the wage base applying separately to each
-                    employee at each employer. The model instead applies a single cap to each
-                    worker&apos;s total annual wages across all jobs. Workers with multiple jobs
-                    or mid-year job changes generate more taxable wage base in reality than in
-                    the model, so this choice understates revenue.
+                    FUTA applies the wage base separately to each employee at each employer. The
+                    model applies a single cap to each worker&apos;s total annual wages across all
+                    jobs, because the data record how much a person earned, not how many
+                    employers paid them. This understates the revenue level under both the{' '}
+                    {formatDollars(CURRENT_BASE)} and the {formatDollars(FIRST.wageBase)} base.
+                    Its effect on the additional-revenue figure can go either way: a worker with
+                    two $7,000 jobs adds $7,000 of taxable base in the model but none in reality,
+                    while a worker with two $30,000 jobs adds $36,000 in the model and $46,000
+                    in reality. The dataset cannot bound this effect.
                   </p>
                 </div>
                 <div className="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-5">
                   <p className="text-sm font-bold text-gray-900 mb-2">
-                    FUTA-exempt employment included
+                    Wages at FUTA-exempt employers are included
                   </p>
                   <p className="text-sm text-gray-700">
-                    Government agencies and 501(c)(3) nonprofit employers are exempt from FUTA,
-                    but their employees&apos; wages, roughly a fifth of U.S. employment, remain
-                    in the model&apos;s tax base, so this choice overstates revenue.
+                    Federal, state, local and tribal governments, 501(c)(3) nonprofits, railroads,
+                    and small farm and household employers are exempt from FUTA, but their
+                    employees&apos; wages stay in the model&apos;s tax base. Government and
+                    501(c)(3) employers alone account for about 23% of nonfarm jobs (BLS: 23.4
+                    million government jobs in 2024; 12.8 million 501(c)(3) jobs in 2022). If
+                    their share of wages under the cap is similar, the estimates are overstated
+                    by roughly a fifth to a quarter: the {FIRST.year} gain would be{' '}
+                    {formatBillions(FIRST.additional * (1 - EXEMPT_SHARE_HIGH))} to{' '}
+                    {formatBillions(FIRST.additional * (1 - EXEMPT_SHARE_LOW))} rather than{' '}
+                    {formatBillions(FIRST.additional)}, and the ten-year total{' '}
+                    {formatBillions(TEN_YEAR_TOTAL * (1 - EXEMPT_SHARE_HIGH))} to{' '}
+                    {formatBillions(TEN_YEAR_TOTAL * (1 - EXEMPT_SHARE_LOW))} rather than{' '}
+                    {formatBillions(TEN_YEAR_TOTAL)}.
                   </p>
                 </div>
               </div>
 
               <p className="text-sm text-gray-600 mt-4">
-                These two caveats push in opposite directions, which could explain why the model
-                estimate comes close to actual IRS collections.
+                The exempt-employer simplification overstates both the baseline and the additional
+                revenue and can be bounded from public data. The single-cap simplification
+                understates revenue levels but has no fixed sign for the additional-revenue
+                figure, and the data cannot size it.
               </p>
+            </section>
+
+            {/* How this compares */}
+            <section className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                How this compares with CBO and Treasury
+              </h2>
+              <div className="space-y-3 text-sm text-gray-700">
+                <p>
+                  State unemployment taxes are deposited in the federal Unemployment Trust Fund
+                  and count as federal revenue in the budget. Federal law requires state taxable
+                  wage bases to be at least the FUTA base, so this reform would raise most
+                  states&apos; bases to {formatDollars(FIRST.wageBase)} (39 states and DC are
+                  below it in 2026). This dashboard counts only the FUTA line. A CBO score would
+                  also count the state base expansion and the state rate cuts CBO assumes in
+                  response, and that state line is the larger one.
+                </p>
+                <p>
+                  CBO&apos;s most recent FUTA option (December 2018) raised the base to $40,000 in
+                  2019, indexed it to wage growth, and cut the net rate from 0.6% to 0.167%. CBO
+                  scored it at $18 billion over 2019 to 2028, most of it from state taxes.
+                  Treasury&apos;s FY2017 budget proposed the same base and rate with new state
+                  solvency rules and scored it at $46 billion over 2017 to 2026. Neither is this
+                  policy: this dashboard holds the 0.6% rate, indexes to prices, and counts
+                  FUTA alone. At CBO&apos;s 0.167% rate, the same {formatDollars(FIRST.wageBase)}{' '}
+                  base would raise about{' '}
+                  {formatBillions((FIRST.reform * 0.167) / 0.6 - FIRST.baseline)} a year in FUTA.
+                  CBO and Treasury totals are fiscal years; this dashboard&apos;s are calendar
+                  years.
+                </p>
+                <p>
+                  CBO&apos;s January 2025 unemployment insurance report puts FUTA revenue at
+                  almost $8 billion in 2023 and more than $8 billion in 2025, which brackets the
+                  model&apos;s fiscal-year-basis figures above.
+                </p>
+              </div>
             </section>
 
             {/* Methodology and sources */}
@@ -406,15 +654,52 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Methodology and sources</h2>
               <div className="space-y-3 text-sm text-gray-700">
                 <p>
-                  <strong>Model and data.</strong> Estimates use policyengine-us{' '}
-                  {MODEL_INFO.policyengineUs} with the {MODEL_INFO.dataset} (release{' '}
+                  <strong>Assumptions.</strong> The estimates assume that:
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    The new base is {formatDollars(FIRST.wageBase)}, roughly the 2023 median
+                    annual wage of U.S. workers ($43,223, SSA), applied in {FIRST.year} without
+                    adjustment for wage growth since 2023, then indexed to the CPI-U from{' '}
+                    {FIRST.year + 1}.
+                  </li>
+                  <li>
+                    Every employer pays the 0.6% net FUTA rate (6.0% minus the full 5.4% credit)
+                    in both the baseline and the reform on the Estimates tab; the fiscal-year
+                    comparison above adds the statutory credit-reduction surcharges.
+                  </li>
+                  <li>
+                    States raise their UI taxable wage bases to at least the federal base, as
+                    federal law effectively requires, so the full credit applies to the whole
+                    base.
+                  </li>
+                  <li>
+                    The wage base applies once per worker per year, not per employer, and wages
+                    at FUTA-exempt employers stay in the base (see the two simplifications
+                    above).
+                  </li>
+                  <li>Wages do not change in response to the tax.</li>
+                  <li>
+                    The wage base grows with the CPI-U: BLS values through{' '}
+                    {formatMonth(CPI_REFERENCE.last_observed_month)} and CBO&apos;s February 2026
+                    projections after.
+                  </li>
+                </ul>
+                <p>
+                  The additional-revenue figure is reform revenue minus baseline revenue under
+                  these same assumptions.
+                </p>
+                <p>
+                  <strong>Model and data.</strong> Estimates use PolicyEngine&apos;s US
+                  microsimulation model, policyengine-us {MODEL_INFO.policyengineUs}, run through
+                  the policyengine package ({MODEL_INFO.policyengine}) on its certified Microcosm
+                  US 2024 national dataset (build{' '}
                   <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">
-                    {MODEL_INFO.datasetRelease}
+                    {MODEL_INFO.datasetBuild}
                   </code>
-                  ), a ~57,000-household national survey dataset calibrated to more than 30,000
-                  administrative targets. The model simulates each year from 2026 to 2035 once,
-                  uprating the 2024 survey wages to future years with CBO&apos;s economic
-                  projections.
+                  ), about 57,000 households representing the 50 states and DC. The model runs
+                  one simulation per year from {FIRST.year} to {LAST.year}, growing 2024 wages
+                  with CBO&apos;s wage projections.
                 </p>
                 <p>
                   <strong>How the revenue is computed.</strong> Within each simulated year, a
@@ -422,73 +707,60 @@ export default function Home() {
                   <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">
                     payroll_tax_gross_wages
                   </code>{' '}
-                  variable) up to the taxable wage base; 0.6% is the net rate assuming every
-                  employer receives the full 5.4% credit for state unemployment taxes. Because
-                  the tax is linear in the wage base, the baseline and the reform read from the
-                  same simulated wage distribution: revenue under each scenario is the weighted
-                  sum of min(wages, base) &times; 0.6%, so no separate reform simulation is
-                  needed. The calculation script and its raw output are in the{' '}
+                  variable: wages and salaries including 401(k) deferrals and tips, excluding
+                  pre-tax health and HSA contributions) up to the taxable wage base. Because the
+                  tax is linear in the wage base, the baseline and the reform read from the same
+                  simulated wage distribution: revenue under each scenario is the weighted sum of
+                  min(wages, base) &times; 0.6%. The calculation script and its unedited output
+                  are in the{' '}
                   <a
-                    href="https://github.com/PolicyEngine/futa-wage-base-dashboard/tree/main/analysis"
+                    href={`${REPO_URL}/tree/main/analysis`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary-600 hover:text-primary-700 underline"
+                    className="text-teal-600 hover:text-teal-700 underline"
                   >
                     dashboard&apos;s GitHub repository
                   </a>
+                  , and the page reads that output directly.
+                </p>
+                <p>
+                  <strong>Indexing.</strong> The {formatDollars(FIRST.wageBase)} base applies in{' '}
+                  {FIRST.year}. For each later year the base is{' '}
+                  {formatDollars(FIRST.wageBase)} times the ratio of the prior calendar
+                  year&apos;s average CPI-U to the {CPI_REFERENCE.calendar_year} average (
+                  {CPI_REFERENCE.average.toFixed(1)}), rounded to the nearest $100. The CPI-U
+                  series is the model&apos;s: BLS monthly values through{' '}
+                  {formatMonth(CPI_REFERENCE.last_observed_month)}, CBO calendar-year projections
+                  after that, with the remaining months of the current year interpolated between
+                  the two. This is a modeling choice, not a statutory rule; an enacted reform
+                  would specify its own rule and follow realized inflation. Earlier proposals
+                  to raise the base (CBO 2018, Treasury FY2017) indexed it to wage growth rather
+                  than prices.
+                </p>
+                <p>
+                  <strong>No behavioral response.</strong> FUTA is an employer-side tax. CBO and
+                  JCT assume employers offset higher payroll taxes with lower cash compensation,
+                  which reduces income and payroll tax receipts. JCT sizes that offset proposal
+                  by proposal (it historically used 10% for payroll taxes and applies about 25%
+                  to excise taxes). The figures here are gross of any such offset; a 10% to 25%
+                  offset would put the {FIRST.year} figure at{' '}
+                  {formatBillions(FIRST.additional * 0.75)} to {formatBillions(FIRST.additional * 0.9)}
                   .
                 </p>
                 <p>
-                  <strong>Indexing.</strong> The $43,000 base applies in 2026. Later years grow
-                  with the CPI-U using CBO&apos;s February 2026 projections, following the
-                  convention that the prior February&apos;s index sets the year&apos;s parameter,
-                  rounded to the nearest $100. These are projected index values; under an enacted
-                  reform, indexation would follow realized inflation. The PolicyEngine web app
-                  does not expose parameter indexing, so this analysis scripts the Python model
-                  directly.
-                </p>
-                <p>
-                  <strong>Static estimate.</strong> No behavioral response is modeled. FUTA is an
-                  employer-side tax; conventional scoring assumes employer payroll taxes are
-                  ultimately borne by workers through lower wages, which would shrink income and
-                  payroll tax bases and offset roughly 20&ndash;25% of the gross revenue gain.
-                </p>
-                <p>
-                  <strong>State conformity.</strong> Federal law effectively requires state UI
-                  taxable wage bases to be at least the FUTA base. Most states are below $43,000
-                  today, so this reform would also force state UI tax base expansions. Those
-                  state-side effects are not counted here.
+                  <strong>Surcharge assignment.</strong> In the fiscal-year comparison, each
+                  state&apos;s credit-reduction surcharge is assigned by the worker&apos;s state
+                  of residence, a proxy for the state whose unemployment program covers the job.
                 </p>
               </div>
               <ul className="mt-4 space-y-1 text-sm">
-                {[
-                  {
-                    href: 'https://www.irs.gov/statistics/soi-tax-stats-collections-and-refunds-by-type-of-tax-irs-data-book-table-1',
-                    text: 'IRS Data Book Table 1, Collections and refunds by type of tax (unemployment insurance line)',
-                  },
-                  {
-                    href: 'https://www.cbo.gov/budget-options/2018/54809',
-                    text: 'CBO budget option: Increase taxes that finance the federal share of the UI system (2018)',
-                  },
-                  {
-                    href: 'https://www.congress.gov/crs-product/R44527',
-                    text: 'CRS R44527, The Fundamentals of the Federal Unemployment Tax (FUTA)',
-                  },
-                  {
-                    href: 'https://www.irs.gov/pub/irs-pdf/i940.pdf',
-                    text: 'IRS, Instructions for Form 940',
-                  },
-                  {
-                    href: 'https://oui.doleta.gov/unemploy/futa_credit.asp',
-                    text: 'U.S. Department of Labor, FUTA credit reductions',
-                  },
-                ].map(({ href, text }) => (
+                {SOURCES.map(({ href, text }) => (
                   <li key={href}>
                     <a
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 underline"
+                      className="text-teal-600 hover:text-teal-700 underline"
                     >
                       {text}
                     </a>
@@ -496,7 +768,7 @@ export default function Home() {
                 ))}
               </ul>
             </section>
-          </>
+          </div>
         )}
       </div>
     </main>

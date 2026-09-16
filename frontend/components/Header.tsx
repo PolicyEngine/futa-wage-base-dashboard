@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { asset } from '@/lib/site';
 
 /**
  * Header matching policyengine-app-v2 exactly.
@@ -222,6 +223,8 @@ function CountrySelector() {
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-label="Country selector"
+        aria-expanded={open}
+        aria-haspopup="menu"
         style={{
           background: 'transparent',
           border: 'none',
@@ -333,6 +336,16 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const aboutRef = useRef<HTMLDivElement>(null);
 
+  // Close the mobile drawer on Escape
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [mobileOpen]);
+
   // Close dropdown on outside click or Escape
   useEffect(() => {
     if (!aboutOpen) return;
@@ -370,8 +383,9 @@ export default function Header() {
         {/* Left: Logo + Desktop Nav */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <a href="https://policyengine.org/us" rel="noopener noreferrer" aria-label="PolicyEngine home" style={{ display: 'flex', alignItems: 'center', marginRight: '12px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://policyengine.org/assets/logos/policyengine/white.svg"
+              src={asset('/policyengine-logo-white.svg')}
               alt="PolicyEngine logo"
               width={120}
               height={24}
@@ -387,6 +401,8 @@ export default function Header() {
                   <button
                     type="button"
                     onClick={() => setAboutOpen((prev) => !prev)}
+                    aria-expanded={aboutOpen}
+                    aria-haspopup="menu"
                     style={{
                       ...navItemStyle,
                       background: 'transparent',
@@ -453,6 +469,8 @@ export default function Header() {
             onClick={() => setMobileOpen(!mobileOpen)}
             className="p-1 rounded bg-transparent border-none cursor-pointer"
             aria-label="Toggle navigation"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
             style={{ padding: '4px' }}
           >
             {/* Menu — matches IconMenu2 size={24} */}
@@ -472,7 +490,7 @@ export default function Header() {
             style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1001 }}
             onClick={() => setMobileOpen(false)}
           />
-          <div style={{
+          <div id="mobile-menu" role="dialog" aria-label="Navigation menu" style={{
             position: 'fixed',
             top: 0,
             right: 0,
