@@ -1,9 +1,6 @@
 'use client';
 
-const basePath =
-  process.env.NEXT_PUBLIC_BASE_PATH !== undefined
-    ? process.env.NEXT_PUBLIC_BASE_PATH
-    : '/us/futa-wage-base-dashboard';
+import { asset } from '@/lib/site';
 
 /**
  * PolicyEngine logo watermark for Recharts charts.
@@ -14,7 +11,7 @@ export default function ChartWatermark() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`${basePath}/policyengine-logo-teal.png`}
+      src={asset('/policyengine-logo-teal.png')}
       alt=""
       aria-hidden="true"
       style={{

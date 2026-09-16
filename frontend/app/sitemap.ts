@@ -1,13 +1,14 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
+import { MODEL_INFO } from '@/lib/data';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://policyengine.org/us/futa-wage-base-dashboard';
-
   return [
     {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
+      url: SITE_URL,
+      // The page changes when the analysis is rerun, not on every deploy.
+      lastModified: new Date(MODEL_INFO.generated),
+      changeFrequency: 'monthly',
       priority: 1,
     },
   ];

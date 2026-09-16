@@ -1,34 +1,64 @@
 # FUTA taxable wage base dashboard
 
-Estimates the federal revenue from raising the FUTA taxable wage base from $7,000 to $43,000 in 2026 and indexing it to the CPI-U thereafter, holding the 6.0% statutory rate and maximum 5.4% state-tax credit (0.6% net) constant.
+Estimates the FUTA revenue from raising the federal unemployment taxable wage base from $7,000 to $43,000 in 2026 and indexing it to the CPI-U thereafter, holding the 6.0% statutory rate and the maximum 5.4% state-tax credit (0.6% net) constant. The $43,000 figure is roughly the 2023 median annual wage of U.S. workers ($43,222.81, [SSA net compensation statistics](https://www.ssa.gov/cgi-bin/netcomp.cgi?year=2023)).
 
 **Live:** https://futa-wage-base-dashboard.vercel.app/us/futa-wage-base-dashboard
 
 ## Results
 
-- +$26.4 billion in additional federal revenue in 2026 (baseline $6.8B → $33.3B)
-- $318.8 billion over 2026–2035 (static)
-- Wage base path: $43,000 (2026) → $53,600 (2035), CPI-U indexed, rounded to the nearest $100
+All figures are calendar years, flat 0.6% net rate, no behavioral response, FUTA line only (state unemployment taxes, which federal law would also raise, are not counted).
+
+- 2026: +$26.4 billion (baseline $6.8 billion at the $7,000 base; $33.3 billion at $43,000)
+- 2026 to 2035: $317.4 billion
+- Wage base path: $43,000 (2026) to $53,200 (2035), CPI-U indexed, rounded to the nearest $100
+
+Two simplifications shape these numbers and are documented on the dashboard: the wage base is applied once per worker rather than once per employer, and wages at FUTA-exempt employers (government, 501(c)(3) nonprofits, and others) stay in the base. The second overstates the estimates by roughly a fifth to a quarter; the first has no fixed sign for the additional-revenue figure.
 
 ## Method
 
-Computed with [policyengine-us](https://github.com/PolicyEngine/policyengine-us) 1.808.0 (including the credit-reduction rate corrections merged in [PR #9326](https://github.com/PolicyEngine/policyengine-us/pull/9326)) on the Microcosm US 2024 national dataset (Build P). FUTA liability is linear in the wage base, so each year needs only one baseline simulation: revenue = Σ weight × min(gross wages, base) × 0.6%. The calculation script and its raw output live in [`analysis/`](analysis/); the resulting estimates are embedded in `frontend/lib/data.ts`, so the dashboard itself is fully static.
+Computed with [policyengine-us](https://github.com/PolicyEngine/policyengine-us) 2.2.1 through the [policyengine](https://github.com/PolicyEngine/policyengine.py) package (6.0.0), which pins the certified Microcosm US 2024 national dataset (`populace-us-2024-spm-20260915`, about 57,000 households, 50 states plus DC). FUTA liability is linear in the wage base, so each year needs one baseline simulation: revenue = Σ weight × min(gross wages, base) × 0.6%.
 
-Benchmarked against actual FUTA collections from IRS Data Book Table 1 ($7.9B FY2023, $8.1B FY2024, $8.8B FY2025). The dashboard baseline (~$7B) excludes credit-reduction surcharges from states with outstanding federal UI loans by design; see the methodology section on the dashboard.
+Indexing: for each year after 2026 the base is $43,000 × (prior calendar-year average CPI-U) / (2025 average), rounded to the nearest $100. The CPI-U series is the model's parameter: BLS monthly values through the latest release, CBO February 2026 calendar-year projections after that, with the rest of the current year interpolated between the two.
+
+Validation: the dashboard compares the model with IRS Data Book gross FUTA collections on a fiscal-year basis (base tax for the year plus the prior year's credit-reduction surcharge, which employers pay with the fourth-quarter deposit the following January). The model runs 3.6% below IRS in fiscal 2024 and 3.2% below in fiscal 2025.
+
+The script, its unedited output, and the CSV live in [`analysis/`](analysis/). The dashboard reads `frontend/lib/results.json`, a copy of `analysis/futa_results.json`; tests fail if the two differ or if the CSV drifts from them.
+
+### Reproducing
+
+```bash
+uv venv .venv && source .venv/bin/activate
+uv pip install "policyengine[us]==6.0.0"
+python analysis/futa_wage_base.py
+```
+
+The first run downloads the certified dataset (about 830 MB) into `data/`. The script writes `analysis/futa_results.json`, `analysis/futa_wage_base_estimates.csv`, and `frontend/lib/results.json`.
+
+### CSV columns
+
+| Column | Meaning |
+|---|---|
+| `calendar_year` | Tax year of the simulation |
+| `taxable_wage_base_usd` | FUTA wage base under the reform |
+| `cpi_u_prior_year_average` | Calendar-year average CPI-U for the prior year that set the base |
+| `baseline_revenue_usd` | FUTA revenue at the $7,000 base, 0.6% net rate |
+| `reform_revenue_usd` | FUTA revenue at the reform base, 0.6% net rate |
+| `additional_revenue_usd` | Reform minus baseline |
+| `workers_with_wages` | People with any modeled wages in the year |
+| `workers_with_wages_above_7000` | People with modeled wages above $7,000 |
 
 ## Development
 
 ```bash
 cd frontend
-npm install
-NEXT_PUBLIC_BASE_PATH="" npm run dev
+bun install
+NEXT_PUBLIC_BASE_PATH="" bun run dev
 ```
 
-Production serves under the `/us/futa-wage-base-dashboard` base path for the policyengine.org multi-zone setup.
+`bun run lint`, `bun run typecheck`, `bun run test`, and `bun run build` run in CI on every pull request.
+
+Production serves under the `/us/futa-wage-base-dashboard` base path for the policyengine.org multi-zone setup. Canonical and share URLs derive from the Vercel production URL until `NEXT_PUBLIC_SITE_URL` is set to the policyengine.org mount.
 
 ## Deploy
 
-```bash
-cd frontend
-vercel deploy --prod --scope policy-engine --yes
-```
+Vercel deploys `main` automatically (project root: `frontend/`).

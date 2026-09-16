@@ -1,9 +1,16 @@
 'use client';
 
+import { MODEL_INFO } from '@/lib/data';
+import { asset } from '@/lib/site';
+
 /**
  * Footer matching policyengine-app-v2 exactly.
  * Uses inline SVGs instead of @tabler/icons-react.
  */
+
+// PolicyEngine's Mailchimp list (same u/id/f_id as app-v2's mailchimpSubscription.ts).
+const MAILCHIMP_FORM_ACTION =
+  'https://policyengine.us5.list-manage.com/subscribe/post?u=e5ad35332666289a0f48013c5&id=71ed1f89d8&f_id=00f173e6f0';
 
 const COLORS = {
   primary600: 'var(--primary-600)',
@@ -103,8 +110,9 @@ export default function Footer() {
     >
       <div style={{ maxWidth: '976px', margin: '0 auto' }}>
         {/* Logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://policyengine.org/assets/logos/policyengine/white.svg"
+          src={asset('/policyengine-logo-white.svg')}
           alt="PolicyEngine logo"
           width={260}
           height={52}
@@ -163,8 +171,8 @@ export default function Footer() {
                   style={{ color: 'var(--text-inverse)', textDecoration: 'underline' }}
                 >
                   policyengine-us
-                </a>
-                {' '}v1.808.0
+                </a>{' '}
+                {`v${MODEL_INFO.policyengineUs}`}
               </p>
             </div>
           </div>
@@ -177,13 +185,21 @@ export default function Footer() {
             <p style={{ fontSize: '18px', color: 'var(--text-inverse)', fontFamily: FONT, margin: '0 0 20px 0' }}>
               Get the latest posts delivered right to your inbox.
             </p>
-            <div style={{ width: '80%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Mailchimp hosted form: the same list app-v2 posts to, no JavaScript required. */}
+            <form
+              action={MAILCHIMP_FORM_ACTION}
+              method="post"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ width: '80%', display: 'flex', flexDirection: 'column', gap: '8px' }}
+            >
               <label htmlFor="footer-email" className="sr-only">Email address</label>
               <input
                 id="footer-email"
+                name="EMAIL"
                 type="email"
+                required
                 placeholder="Enter your email address"
-                aria-label="Email address for newsletter subscription"
                 autoComplete="email"
                 style={{
                   width: '100%',
@@ -196,9 +212,8 @@ export default function Footer() {
                   boxSizing: 'border-box',
                 }}
               />
-              <a
-                href="https://policyengine.org/us/subscribe"
-                rel="noopener noreferrer"
+              <button
+                type="submit"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -218,8 +233,8 @@ export default function Footer() {
                 }}
               >
                 SUBSCRIBE
-              </a>
-            </div>
+              </button>
+            </form>
           </div>
         </div>
       </div>

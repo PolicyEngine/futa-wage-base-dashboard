@@ -1,84 +1,172 @@
 /**
- * Precomputed FUTA wage base reform estimates.
+ * Dashboard data, read from the analysis output.
  *
- * Reform: raise the FUTA taxable wage base from $7,000 to $43,000 in 2026,
- * index to the CPI-U thereafter (prior-February index sets the year's base,
- * rounded to the nearest $100), holding the 6.0% rate and maximum 5.4%
- * credit (0.6% net) constant.
- *
- * Computed with policyengine-us 1.808.0 on the Microcosm US 2024 national
- * dataset (Build P sparse release
- * populace-us-2024-buildp-sparse-rmloss100-cae8640, 2026-07-28).
- * Revenue basis: 0.6% net rate for all employers.
+ * `results.json` is written by analysis/futa_wage_base.py alongside
+ * analysis/futa_results.json; a test asserts the two files are identical, so
+ * every number on the page traces to one model run. Nothing in this module
+ * is hand-typed except the source citations for the IRS figures.
  */
 
+import raw from './results.json';
+
+type RawRow = {
+  year: number;
+  weighted_persons: number;
+  baseline_revenue_flat_06: number;
+  workers_with_wages: number;
+  workers_above_current_base: number;
+  baseline_revenue_statutory?: number;
+  model_futa_variable_check?: number;
+  credit_reduction_surcharge?: number;
+  wage_base?: number;
+  cpi_u_prior_year_average?: number;
+  cpi_u_source?: string;
+  reform_revenue_flat_06?: number;
+  additional_revenue_flat_06?: number;
+};
+
+type RawValidation = {
+  fiscal_year: number;
+  irs_gross_collections: number;
+  irs_refunds: number;
+  model_fiscal_year_basis: number;
+  model_flat_06_calendar_year: number;
+  model_surcharge_prior_calendar_year: number;
+  model_surcharge_prior_calendar_year_basis: string;
+  model_statutory_same_calendar_year: number | null;
+};
+
+type RawOutput = {
+  generated: string;
+  policyengine_version: string;
+  policyengine_us_version: string;
+  bundle: Record<string, unknown>;
+  cpi_u_reference: {
+    calendar_year: number;
+    average: number;
+    source: string;
+    last_observed_month: string;
+  };
+  results: RawRow[];
+  surcharge_approximations: Record<
+    string,
+    { year: number; credit_reduction_surcharge: number; basis: string; states_with_rates: string[] }
+  >;
+  validation: RawValidation[];
+};
+
+const data = raw as RawOutput;
+
+export const CURRENT_BASE = 7_000;
+export const NET_RATE = 0.006;
+
 export interface YearResult {
+  /** Calendar (tax) year. */
   year: number;
   /** FUTA taxable wage base under the reform ($). */
   wageBase: number;
-  /** CPI-U index value (prior February) used to set the base. */
-  cpiU: number;
-  /** Baseline FUTA revenue at the $7,000 base ($). */
+  /** CPI-U calendar-year average for the prior year that set this base. */
+  cpiUPriorYearAverage: number;
+  /** Where that CPI-U value came from (BLS observed, CBO projection, or a mix). */
+  cpiUSource: string;
+  /** FUTA revenue at the $7,000 base, flat 0.6% net rate ($). */
   baseline: number;
-  /** FUTA revenue under the reform ($). */
+  /** FUTA revenue under the reform, flat 0.6% net rate ($). */
   reform: number;
   /** Additional revenue raised by the reform ($). */
   additional: number;
-  /** Workers with wages above the current $7,000 base. */
+  /** People with any modeled wages in the year. */
+  workersWithWages: number;
+  /** People with modeled wages above the current $7,000 base. */
   workersAbove7k: number;
 }
 
-export const RESULTS: YearResult[] = [
-  { year: 2026, wageBase: 43000, cpiU: 319.8, baseline: 6820184824, reform: 33265912046, additional: 26445727221, workersAbove7k: 155678430 },
-  { year: 2027, wageBase: 44000, cpiU: 327.5, baseline: 6870789894, reform: 34427123058, additional: 27556333164, workersAbove7k: 156758509 },
-  { year: 2028, wageBase: 45800, cpiU: 340.3, baseline: 6913470019, reform: 36006176179, additional: 29092706160, workersAbove7k: 158827065 },
-  { year: 2029, wageBase: 46800, cpiU: 348.3, baseline: 6949815159, reform: 37129665273, additional: 30179850115, workersAbove7k: 159594582 },
-  { year: 2030, wageBase: 47900, cpiU: 356.3, baseline: 6984905250, reform: 38312896152, additional: 31327990903, workersAbove7k: 160354074 },
-  { year: 2031, wageBase: 49000, cpiU: 364.3, baseline: 7018646643, reform: 39501606909, additional: 32482960266, workersAbove7k: 160989647 },
-  { year: 2032, wageBase: 50100, cpiU: 372.6, baseline: 7050868169, reform: 40690711056, additional: 33639842887, workersAbove7k: 161724825 },
-  { year: 2033, wageBase: 51200, cpiU: 381.0, baseline: 7080321729, reform: 41882736997, additional: 34802415269, workersAbove7k: 163726871 },
-  { year: 2034, wageBase: 52400, cpiU: 389.6, baseline: 7107725250, reform: 43145416070, additional: 36037690820, workersAbove7k: 164470269 },
-  { year: 2035, wageBase: 53600, cpiU: 398.4, baseline: 7133790606, reform: 44414103587, additional: 37280312981, workersAbove7k: 165003667 },
-];
+export const RESULTS: YearResult[] = data.results
+  .filter((r) => r.wage_base !== undefined)
+  .map((r) => ({
+    year: r.year,
+    wageBase: r.wage_base as number,
+    cpiUPriorYearAverage: r.cpi_u_prior_year_average as number,
+    cpiUSource: r.cpi_u_source as string,
+    baseline: r.baseline_revenue_flat_06,
+    reform: r.reform_revenue_flat_06 as number,
+    additional: r.additional_revenue_flat_06 as number,
+    workersWithWages: r.workers_with_wages,
+    workersAbove7k: r.workers_above_current_base,
+  }));
 
+export const FIRST = RESULTS[0];
+export const LAST = RESULTS[RESULTS.length - 1];
 export const TEN_YEAR_TOTAL = RESULTS.reduce((sum, r) => sum + r.additional, 0);
 
-export const MODEL_INFO = {
-  policyengineUs: '1.808.0',
-  dataset: 'Microcosm US 2024 national dataset, Build P sparse release',
-  datasetRelease: 'populace-us-2024-buildp-sparse-rmloss100-cae8640-20260728T011454Z',
-};
+/** Model credit-reduction surcharge (statutory minus flat) by calendar year. */
+export const SURCHARGES: Record<number, number> = Object.fromEntries(
+  data.results
+    .filter((r) => r.credit_reduction_surcharge !== undefined)
+    .map((r) => [r.year, r.credit_reduction_surcharge as number]),
+);
 
 export interface ValidationYear {
-  /** Federal fiscal year of the IRS figure. */
+  /** Federal fiscal year (October to September) of the IRS figure. */
   fiscalYear: number;
-  /** Actual FUTA gross collections, IRS Data Book Table 1 ($). */
-  irsActual: number;
-  /**
-   * Model baseline for the matching calendar year with actual statutory
-   * credit-reduction rates applied ($).
-   */
-  modelStatutory: number;
+  /** IRS Data Book gross collections, unemployment insurance line ($). */
+  irsGross: number;
+  /** IRS refunds on that line ($); net collections = gross minus refunds. */
+  irsRefunds: number;
+  /** Model on a fiscal-year basis: flat 0.6% for the year plus the prior year's surcharge ($). */
+  modelFiscalYear: number;
+  /** Flat 0.6% model revenue for the same calendar year ($). */
+  modelFlatCalendarYear: number;
+  /** Model surcharge for the prior calendar year ($). */
+  modelSurchargePriorYear: number;
+  /** True when the prior year was simulated; false when its surcharge was approximated. */
+  priorYearModeled: boolean;
 }
 
-/**
- * Actual FUTA collections (IRS Data Book Table 1, "Unemployment insurance"
- * gross collections line) vs. the model baseline run with the statutory
- * credit-reduction rates in effect each year. IRS figures are fiscal-year
- * cash collections and include penalties and interest; model figures are
- * calendar-year accrued liability.
- */
-export const VALIDATION: ValidationYear[] = [
-  { fiscalYear: 2024, irsActual: 8130484000, modelStatutory: 8417777224 },
-  { fiscalYear: 2025, irsActual: 8776869000, modelStatutory: 8341294315 },
-];
+export const VALIDATION: ValidationYear[] = data.validation.map((v) => ({
+  fiscalYear: v.fiscal_year,
+  irsGross: v.irs_gross_collections,
+  irsRefunds: v.irs_refunds,
+  modelFiscalYear: v.model_fiscal_year_basis,
+  modelFlatCalendarYear: v.model_flat_06_calendar_year,
+  modelSurchargePriorYear: v.model_surcharge_prior_calendar_year,
+  priorYearModeled: v.model_surcharge_prior_calendar_year_basis === 'modeled',
+}));
+
+/** Approximated surcharges for years the dataset cannot simulate (keyed by year). */
+export const SURCHARGE_APPROXIMATIONS = data.surcharge_approximations ?? {};
+
+const bundleString = (key: string): string | undefined => {
+  const v = data.bundle?.[key];
+  return typeof v === 'string' ? v : undefined;
+};
+
+export const MODEL_INFO = {
+  policyengine: data.policyengine_version,
+  policyengineUs: data.policyengine_us_version,
+  datasetBuild:
+    bundleString('certified_data_build_id') ??
+    bundleString('data_build_id') ??
+    bundleString('build_id') ??
+    'see analysis/futa_results.json',
+  datasetUri: bundleString('runtime_dataset_uri') ?? bundleString('default_dataset_uri'),
+  generated: data.generated,
+};
+
+export const CPI_REFERENCE = data.cpi_u_reference;
+
+/** Share of U.S. jobs at FUTA-exempt employers used for the sensitivity range (BLS, see sources). */
+export const EXEMPT_SHARE_LOW = 0.2;
+export const EXEMPT_SHARE_HIGH = 0.25;
 
 export function buildCsv(): string {
   const header =
-    'year,taxable_wage_base_usd,cpi_u_index,baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,workers_above_7000';
+    'calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,workers_with_wages,workers_with_wages_above_7000';
   const rows = RESULTS.map(
     (r) =>
-      `${r.year},${r.wageBase},${r.cpiU.toFixed(1)},${r.baseline},${r.reform},${r.additional},${r.workersAbove7k}`,
+      `${r.year},${r.wageBase},${r.cpiUPriorYearAverage.toFixed(3)},${Math.round(r.baseline)},${Math.round(r.reform)},${Math.round(r.additional)},${Math.round(r.workersWithWages)},${Math.round(r.workersAbove7k)}`,
   );
   return [header, ...rows].join('\n') + '\n';
 }
+
+export const CSV_FILENAME = `futa_wage_base_estimates_policyengine-us-${MODEL_INFO.policyengineUs}.csv`;

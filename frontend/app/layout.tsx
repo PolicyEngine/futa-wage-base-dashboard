@@ -2,7 +2,7 @@ import Script from 'next/script';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import Providers from '@/components/Providers';
+import { SITE_URL, REPO_URL } from '@/lib/site';
 
 const GA_ID = 'G-2YHG89FY0N';
 const TOOL_NAME = 'futa-wage-base-dashboard';
@@ -13,12 +13,9 @@ const inter = Inter({
   display: 'swap',
 });
 
-const SITE_URL = 'https://policyengine.org/us/futa-wage-base-dashboard';
-const OG_IMAGE = 'https://policyengine.org/assets/logos/policyengine/og-logo.png';
-
 const TITLE = 'FUTA taxable wage base dashboard | PolicyEngine';
 const DESCRIPTION =
-  'Federal revenue estimates for raising the FUTA taxable wage base from $7,000 to $43,000 in 2026 and indexing it to the CPI-U.';
+  'FUTA revenue estimates for raising the federal unemployment taxable wage base from $7,000 to $43,000 in 2026 and indexing it to inflation (CPI-U).';
 
 export const metadata: Metadata = {
   title: {
@@ -37,14 +34,6 @@ export const metadata: Metadata = {
     siteName: 'PolicyEngine',
     type: 'website',
     locale: 'en_US',
-    images: [
-      {
-        url: OG_IMAGE,
-        width: 1200,
-        height: 630,
-        alt: 'PolicyEngine - FUTA taxable wage base dashboard',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
@@ -52,12 +41,6 @@ export const metadata: Metadata = {
     creator: '@ThePolicyEngine',
     title: TITLE,
     description: DESCRIPTION,
-    images: [
-      {
-        url: OG_IMAGE,
-        alt: 'PolicyEngine - FUTA taxable wage base dashboard',
-      },
-    ],
   },
   other: {
     'theme-color': '#2C7A7B',
@@ -85,25 +68,27 @@ export const metadata: Metadata = {
   ],
 };
 
-// JSON-LD structured data for rich search results
+// JSON-LD: the page is a fixed dataset with one CSV download, not an application.
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: 'FUTA taxable wage base dashboard',
+  '@type': 'Dataset',
+  name: 'FUTA taxable wage base reform revenue estimates, 2026 to 2035',
   description: DESCRIPTION,
   url: SITE_URL,
-  applicationCategory: 'FinanceApplication',
-  operatingSystem: 'All',
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'USD',
-  },
+  temporalCoverage: '2026/2035',
+  spatialCoverage: 'United States',
+  isBasedOn: 'https://github.com/PolicyEngine/policyengine-us',
+  distribution: [
+    {
+      '@type': 'DataDownload',
+      encodingFormat: 'text/csv',
+      contentUrl: `${REPO_URL}/blob/main/analysis/futa_wage_base_estimates.csv`,
+    },
+  ],
   creator: {
     '@type': 'Organization',
     name: 'PolicyEngine',
     url: 'https://policyengine.org',
-    logo: 'https://policyengine.org/assets/logos/policyengine/og-logo.png',
     sameAs: [
       'https://twitter.com/ThePolicyEngine',
       'https://www.facebook.com/PolicyEngine',
@@ -186,15 +171,14 @@ export default function RootLayout({
       </head>
       <body>
         <noscript>
-          <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'sans-serif' }}>
-            <h1>FUTA taxable wage base dashboard</h1>
-            <p>This dashboard requires JavaScript to run. Please enable JavaScript in your browser settings to use this tool.</p>
-            <p>Visit <a href="https://policyengine.org">PolicyEngine</a> for more information.</p>
+          <div style={{ padding: '1rem 2rem', textAlign: 'center', fontFamily: 'sans-serif' }}>
+            <p>
+              The year selector, the Validation and methods tab, the chart, and the CSV download
+              need JavaScript. The overview and headline estimates below are readable without it.
+            </p>
           </div>
         </noscript>
-        <Providers>
-          {children}
-        </Providers>
+        {children}
       </body>
     </html>
   );
