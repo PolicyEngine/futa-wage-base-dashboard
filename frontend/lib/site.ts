@@ -25,6 +25,13 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (vercelHost ? `https://${vercelHost}${BASE_PATH}` : `http://localhost:3010${BASE_PATH}`);
 
+/**
+ * Origin only, for Next's `metadataBase`. Next already prefixes file-based
+ * metadata routes (opengraph-image) with the base path, so a metadataBase
+ * that includes the base path would double it.
+ */
+export const SITE_ORIGIN = new URL(SITE_URL).origin;
+
 export const REPO_URL = 'https://github.com/PolicyEngine/futa-wage-base-dashboard';
 
 /** Prefix a public asset path with the base path. */
