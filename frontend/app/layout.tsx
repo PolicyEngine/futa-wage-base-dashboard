@@ -2,7 +2,7 @@ import Script from 'next/script';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { SITE_URL, REPO_URL } from '@/lib/site';
+import { SITE_URL, SITE_ORIGIN, REPO_URL } from '@/lib/site';
 
 const GA_ID = 'G-2YHG89FY0N';
 const TOOL_NAME = 'futa-wage-base-dashboard';
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: '%s | PolicyEngine',
   },
   description: DESCRIPTION,
-  metadataBase: new URL(SITE_URL),
+  metadataBase: new URL(SITE_ORIGIN),
   alternates: {
     canonical: SITE_URL,
   },
