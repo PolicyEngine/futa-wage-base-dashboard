@@ -35,20 +35,30 @@ jobs:
         run: cmp analysis/futa_results.json frontend/lib/results.json
       - name: adjustments.json copies are identical
         run: cmp analysis/futa_adjustments.json frontend/lib/adjustments.json
-      - name: CSV rows match results.json
+      - name: CSV rows match results.json and adjustments.json
         run: |
           python3 - <<'EOF'
           import csv, json
           d = json.load(open("analysis/futa_results.json"))
           rows = {r["year"]: r for r in d["results"] if "wage_base" in r}
+          a = json.load(open("analysis/futa_adjustments.json"))
+          adj = {r["year"]: r for r in a["results"] if "reform_single_cap_all_wages" in r}
           with open("analysis/futa_wage_base_estimates.csv") as f:
               csv_rows = list(csv.DictReader(f))
           assert [int(r["calendar_year"]) for r in csv_rows] == sorted(rows), "years differ"
+          def near(x, y):  # int(x + 0.5) in the writer vs round() here
+              return abs(x - y) <= 1
           for c in csv_rows:
               r = rows[int(c["calendar_year"])]
+              x = adj[int(c["calendar_year"])]
+              base = x["current_even_split_covered_wages"]
+              reform = x["reform_even_split_covered_wages"]
               assert int(c["taxable_wage_base_usd"]) == r["wage_base"]
-              assert int(c["baseline_revenue_usd"]) == round(r["baseline_revenue_flat_06"])
-              assert int(c["reform_revenue_usd"]) == round(r["reform_revenue_flat_06"])
-              assert int(c["additional_revenue_usd"]) == round(r["additional_revenue_flat_06"])
-          print("CSV matches results.json for", len(csv_rows), "years")
+              assert near(int(c["baseline_revenue_usd"]), base)
+              assert near(int(c["reform_revenue_usd"]), reform)
+              assert near(int(c["additional_revenue_usd"]), reform - base)
+              assert near(int(c["unadjusted_baseline_revenue_usd"]), r["baseline_revenue_flat_06"])
+              assert near(int(c["unadjusted_reform_revenue_usd"]), r["reform_revenue_flat_06"])
+              assert near(int(c["unadjusted_additional_revenue_usd"]), r["additional_revenue_flat_06"])
+          print("CSV matches both outputs for", len(csv_rows), "years")
           EOF
