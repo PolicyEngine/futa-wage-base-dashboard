@@ -405,3 +405,36 @@ for path in (OUT, FRONTEND_OUT):
         json.dump(output, f, indent=2)
         f.write("\n")
     print("wrote", path, flush=True)
+
+
+# The dashboard's CSV: the adjusted (headline) series first, the unadjusted
+# model output second. Must stay byte-identical to frontend buildCsv().
+def _round(x: float) -> int:
+    """Math.round semantics for the non-negative values written here."""
+    return int(x + 0.5)
+
+
+csv_out = os.path.join(HERE, "futa_wage_base_estimates.csv")
+with open(csv_out, "w", newline="") as f:
+    f.write(
+        "calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,"
+        "baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,"
+        "unadjusted_baseline_revenue_usd,unadjusted_reform_revenue_usd,"
+        "unadjusted_additional_revenue_usd,workers_with_wages,"
+        "workers_with_wages_above_7000\n"
+    )
+    for year in sorted(y for y in published if published[y].get("wage_base")):
+        p = published[year]
+        a = by_year[year]
+        adj_base = a["current_even_split_covered_wages"]
+        adj_reform = a["reform_even_split_covered_wages"]
+        f.write(
+            f"{year},{p['wage_base']},{p['cpi_u_prior_year_average']:.3f},"
+            f"{_round(adj_base)},{_round(adj_reform)},{_round(adj_reform - adj_base)},"
+            f"{_round(p['baseline_revenue_flat_06'])},"
+            f"{_round(p['reform_revenue_flat_06'])},"
+            f"{_round(p['additional_revenue_flat_06'])},"
+            f"{_round(p['workers_with_wages'])},"
+            f"{_round(p['workers_above_current_base'])}\n"
+        )
+print("wrote", csv_out, flush=True)

@@ -176,6 +176,10 @@ const num = (row: AdjustmentRow, key: string) => row[key] as number;
 
 export interface YearAdjustment {
   year: number;
+  /** Baseline revenue with exempt wages removed and per-employer caps ($). */
+  baselineAdjusted: number;
+  /** Reform revenue with exempt wages removed and per-employer caps ($). */
+  reformAdjusted: number;
   /** Additional revenue with exempt-employer wages removed (single cap). */
   additionalCovered: number;
   /** Additional revenue with exempt wages removed and per-employer caps (CPS-reported employers). */
@@ -188,11 +192,46 @@ export const ADJUSTMENTS: YearAdjustment[] = adj.results
   .filter((r) => 'reform_single_cap_all_wages' in r)
   .map((r) => ({
     year: r.year,
+    baselineAdjusted: num(r, 'current_even_split_covered_wages'),
+    reformAdjusted: num(r, 'reform_even_split_covered_wages'),
     additionalCovered: num(r, 'reform_single_cap_covered_wages') - num(r, 'current_single_cap_covered_wages'),
     additionalCoveredPerEmployer:
       num(r, 'reform_even_split_covered_wages') - num(r, 'current_even_split_covered_wages'),
     additionalPerEmployer: num(r, 'reform_even_split_all_wages') - num(r, 'current_even_split_all_wages'),
   }));
+
+/**
+ * The headline series (issue #5): model output with both measured
+ * adjustments applied, i.e. exempt-employer wages removed and the wage base
+ * applied per employer. One row per year, aligned with RESULTS.
+ */
+export interface AdjustedYearResult {
+  year: number;
+  wageBase: number;
+  cpiUPriorYearAverage: number;
+  baseline: number;
+  reform: number;
+  additional: number;
+  workersWithWages: number;
+  workersAbove7k: number;
+}
+
+export const ADJUSTED_RESULTS: AdjustedYearResult[] = RESULTS.map((r) => {
+  const a = ADJUSTMENTS.find((x) => x.year === r.year) as YearAdjustment;
+  return {
+    year: r.year,
+    wageBase: r.wageBase,
+    cpiUPriorYearAverage: r.cpiUPriorYearAverage,
+    baseline: a.baselineAdjusted,
+    reform: a.reformAdjusted,
+    additional: a.additionalCoveredPerEmployer,
+    workersWithWages: r.workersWithWages,
+    workersAbove7k: r.workersAbove7k,
+  };
+});
+
+export const ADJUSTED_FIRST = ADJUSTED_RESULTS[0];
+export const TEN_YEAR_ADJUSTED = ADJUSTED_RESULTS.reduce((sum, r) => sum + r.additional, 0);
 
 const firstAdj = adj.results.find((r) => r.year === RESULTS[0].year) as AdjustmentRow;
 const census = adj.raw_asec_census_weights as Record<string, number>;
@@ -230,11 +269,11 @@ export const ADJUSTMENT_SUMMARY = {
 
 export function buildCsv(): string {
   const header =
-    'calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,workers_with_wages,workers_with_wages_above_7000';
-  const rows = RESULTS.map(
-    (r) =>
-      `${r.year},${r.wageBase},${r.cpiUPriorYearAverage.toFixed(3)},${Math.round(r.baseline)},${Math.round(r.reform)},${Math.round(r.additional)},${Math.round(r.workersWithWages)},${Math.round(r.workersAbove7k)}`,
-  );
+    'calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,unadjusted_baseline_revenue_usd,unadjusted_reform_revenue_usd,unadjusted_additional_revenue_usd,workers_with_wages,workers_with_wages_above_7000';
+  const rows = RESULTS.map((r, i) => {
+    const a = ADJUSTED_RESULTS[i];
+    return `${r.year},${r.wageBase},${r.cpiUPriorYearAverage.toFixed(3)},${Math.round(a.baseline)},${Math.round(a.reform)},${Math.round(a.additional)},${Math.round(r.baseline)},${Math.round(r.reform)},${Math.round(r.additional)},${Math.round(r.workersWithWages)},${Math.round(r.workersAbove7k)}`;
+  });
   return [header, ...rows].join('\n') + '\n';
 }
 

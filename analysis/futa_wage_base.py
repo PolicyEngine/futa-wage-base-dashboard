@@ -304,19 +304,7 @@ with open(FRONTEND_OUT, "w") as f:
     f.write("\n")
 print("wrote", FRONTEND_OUT, flush=True)
 
-# CSV matching the dashboard's download: one row per projection year.
-with open(CSV_OUT, "w", newline="") as f:
-    f.write(
-        "calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,"
-        "baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,"
-        "workers_with_wages,workers_with_wages_above_7000\n"
-    )
-    for y in YEARS:
-        r = rows[y]
-        f.write(
-            f"{y},{r['wage_base']},{r['cpi_u_prior_year_average']:.3f},"
-            f"{r['baseline_revenue_flat_06']:.0f},{r['reform_revenue_flat_06']:.0f},"
-            f"{r['additional_revenue_flat_06']:.0f},{r['workers_with_wages']:.0f},"
-            f"{r['workers_above_current_base']:.0f}\n"
-        )
-print("wrote", CSV_OUT, flush=True)
+# The dashboard's CSV (futa_wage_base_estimates.csv) leads with the adjusted
+# series measured by futa_adjustments.py, so that script writes it; run it
+# after this one. A test compares the committed CSV against both outputs.
+print("run futa_adjustments.py next to refresh", CSV_OUT, flush=True)
