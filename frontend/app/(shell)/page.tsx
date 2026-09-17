@@ -444,8 +444,8 @@ export default function Home() {
                 workers earning more than {formatDollars(CURRENT_BASE)} ({formatPercent(affectedShare, 0)}{' '}
                 of the {formatMillions(selected.workersWithWages)} people with any wages), the
                 liability would be {formatDollars(avgPerAffected)} per worker, up{' '}
-                {formatDollars(increasePerAffected)} from today. Per-worker figures describe
-                workers at FUTA-covered employers and use the model&apos;s unadjusted series.
+                {formatDollars(increasePerAffected)} from today. The per-worker averages use the
+                unadjusted series, which includes workers at exempt employers.
               </p>
 
               {/* Chart */}
@@ -517,10 +517,10 @@ export default function Home() {
                   wage base with every employer at the full 5.4% credit,{' '}
                   {formatBillionsLong(FIRST.baseline)} in {FIRST.year} before adjustments. The
                   reform applies the same 0.6% net rate, so the additional-revenue figure
-                  isolates the wage-base change. The Estimates tab then applies the two
-                  adjustments measured in the next section; the comparison on this section uses
-                  the unadjusted output, which is what the IRS collections line corresponds to
-                  once surcharges are added.
+                  isolates the wage-base change. The Estimates tab applies the two adjustments
+                  measured in the next section. The cards below compare the unadjusted output
+                  with collections; with both adjustments applied the model runs{' '}
+                  {adjustedGapText}, and the next section explains why.
                 </p>
                 <p>
                   IRS collections run higher. They include penalties and interest, and they

@@ -54,9 +54,9 @@ jobs:
               base = x["current_even_split_covered_wages"]
               reform = x["reform_even_split_covered_wages"]
               assert int(c["taxable_wage_base_usd"]) == r["wage_base"]
-              assert near(int(c["baseline_revenue_usd"]), base)
-              assert near(int(c["reform_revenue_usd"]), reform)
-              assert near(int(c["additional_revenue_usd"]), reform - base)
+              assert near(int(c["adjusted_baseline_revenue_usd"]), base)
+              assert near(int(c["adjusted_reform_revenue_usd"]), reform)
+              assert near(int(c["adjusted_additional_revenue_usd"]), reform - base)
               assert near(int(c["unadjusted_baseline_revenue_usd"]), r["baseline_revenue_flat_06"])
               assert near(int(c["unadjusted_reform_revenue_usd"]), r["reform_revenue_flat_06"])
               assert near(int(c["unadjusted_additional_revenue_usd"]), r["additional_revenue_flat_06"])

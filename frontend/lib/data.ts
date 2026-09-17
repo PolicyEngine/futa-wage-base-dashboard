@@ -269,7 +269,7 @@ export const ADJUSTMENT_SUMMARY = {
 
 export function buildCsv(): string {
   const header =
-    'calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,baseline_revenue_usd,reform_revenue_usd,additional_revenue_usd,unadjusted_baseline_revenue_usd,unadjusted_reform_revenue_usd,unadjusted_additional_revenue_usd,workers_with_wages,workers_with_wages_above_7000';
+    'calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,adjusted_baseline_revenue_usd,adjusted_reform_revenue_usd,adjusted_additional_revenue_usd,unadjusted_baseline_revenue_usd,unadjusted_reform_revenue_usd,unadjusted_additional_revenue_usd,workers_with_wages,workers_with_wages_above_7000';
   const rows = RESULTS.map((r, i) => {
     const a = ADJUSTED_RESULTS[i];
     return `${r.year},${r.wageBase},${r.cpiUPriorYearAverage.toFixed(3)},${Math.round(a.baseline)},${Math.round(a.reform)},${Math.round(a.additional)},${Math.round(r.baseline)},${Math.round(r.reform)},${Math.round(r.additional)},${Math.round(r.workersWithWages)},${Math.round(r.workersAbove7k)}`;

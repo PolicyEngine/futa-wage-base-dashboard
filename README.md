@@ -47,9 +47,9 @@ Downloads the 2023 to 2025 CPS ASEC public-use files from Census (about 150 MB e
 | `calendar_year` | Tax year of the simulation |
 | `taxable_wage_base_usd` | FUTA wage base under the reform |
 | `cpi_u_prior_year_average` | Calendar-year average CPI-U for the prior year that set the base |
-| `baseline_revenue_usd` | FUTA revenue at the $7,000 base, 0.6% net rate, both adjustments applied |
-| `reform_revenue_usd` | FUTA revenue at the reform base, 0.6% net rate, both adjustments applied |
-| `additional_revenue_usd` | Reform minus baseline (adjusted; the headline series) |
+| `adjusted_baseline_revenue_usd` | FUTA revenue at the $7,000 base, 0.6% net rate, both adjustments applied |
+| `adjusted_reform_revenue_usd` | FUTA revenue at the reform base, 0.6% net rate, both adjustments applied |
+| `adjusted_additional_revenue_usd` | Reform minus baseline (adjusted; the headline series) |
 | `unadjusted_baseline_revenue_usd` | Model output before the adjustments |
 | `unadjusted_reform_revenue_usd` | Model output before the adjustments |
 | `unadjusted_additional_revenue_usd` | Model output before the adjustments |
