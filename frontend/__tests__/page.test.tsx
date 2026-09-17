@@ -2,7 +2,16 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import Home from '@/app/(shell)/page';
 import Footer from '@/components/Footer';
-import { RESULTS, FIRST, LAST, TEN_YEAR_TOTAL, VALIDATION, MODEL_INFO } from '@/lib/data';
+import {
+  RESULTS,
+  FIRST,
+  LAST,
+  TEN_YEAR_TOTAL,
+  VALIDATION,
+  MODEL_INFO,
+  ADJUSTMENTS,
+  ADJUSTMENT_SUMMARY,
+} from '@/lib/data';
 import { formatBillions, formatDollars, formatSignedPercent } from '@/lib/format';
 
 describe('Estimates tab', () => {
@@ -82,6 +91,16 @@ describe('Validation and methods tab', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Validation and methods' }));
     expect(screen.getByText(/no Virgin Islands employers/)).toBeInTheDocument();
     expect(screen.queryByText(/model applies each year.s statutory/)).not.toBeInTheDocument();
+  });
+
+  it('reports the measured adjustments from the data module', () => {
+    const { container } = render(<Home />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Validation and methods' }));
+    const text = container.textContent ?? '';
+    expect(text).toContain(formatBillions(ADJUSTMENTS[0].additionalCovered));
+    expect(text).toContain(formatBillions(ADJUSTMENTS[0].additionalCoveredPerEmployer));
+    expect(text).toContain(formatBillions(ADJUSTMENT_SUMMARY.tenYearCoveredPerEmployer));
+    expect(text).toContain('two errors that offset');
   });
 
   it('states the model version once, from the data module', () => {

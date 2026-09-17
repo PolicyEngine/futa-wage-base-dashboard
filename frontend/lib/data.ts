@@ -8,6 +8,7 @@
  */
 
 import raw from './results.json';
+import rawAdjustments from './adjustments.json';
 
 type RawRow = {
   year: number;
@@ -155,9 +156,77 @@ export const MODEL_INFO = {
 
 export const CPI_REFERENCE = data.cpi_u_reference;
 
-/** Share of U.S. jobs at FUTA-exempt employers used for the sensitivity range (BLS, see sources). */
-export const EXEMPT_SHARE_LOW = 0.2;
-export const EXEMPT_SHARE_HIGH = 0.25;
+/**
+ * Measured adjustments for the model's two simplifications, from
+ * analysis/futa_adjustments.py: raw CPS ASEC employer fields joined to the
+ * model's persons by CPS person id. `adjustments.json` is a copy of
+ * analysis/futa_adjustments.json (a test asserts they are identical).
+ */
+type AdjustmentRow = Record<string, number | Record<string, number>> & { year: number };
+type AdjustmentsFile = {
+  asec_survey_years: number[];
+  asec_match_rate: number;
+  results: AdjustmentRow[];
+  validation: (Record<string, number> & { fiscal_year: number })[];
+  raw_asec_census_weights: Record<string, number | Record<string, number>>;
+  irs_w2_forms_filed_2024: number;
+};
+const adj = rawAdjustments as unknown as AdjustmentsFile;
+const num = (row: AdjustmentRow, key: string) => row[key] as number;
+
+export interface YearAdjustment {
+  year: number;
+  /** Additional revenue with exempt-employer wages removed (single cap). */
+  additionalCovered: number;
+  /** Additional revenue with exempt wages removed and per-employer caps (CPS-reported employers). */
+  additionalCoveredPerEmployer: number;
+  /** Additional revenue with per-employer caps only. */
+  additionalPerEmployer: number;
+}
+
+export const ADJUSTMENTS: YearAdjustment[] = adj.results
+  .filter((r) => 'reform_single_cap_all_wages' in r)
+  .map((r) => ({
+    year: r.year,
+    additionalCovered: num(r, 'reform_single_cap_covered_wages') - num(r, 'current_single_cap_covered_wages'),
+    additionalCoveredPerEmployer:
+      num(r, 'reform_even_split_covered_wages') - num(r, 'current_even_split_covered_wages'),
+    additionalPerEmployer: num(r, 'reform_even_split_all_wages') - num(r, 'current_even_split_all_wages'),
+  }));
+
+const firstAdj = adj.results.find((r) => r.year === RESULTS[0].year) as AdjustmentRow;
+const census = adj.raw_asec_census_weights as Record<string, number>;
+
+export const ADJUSTMENT_SUMMARY = {
+  asecSurveyYears: adj.asec_survey_years,
+  exemptShareCurrentBase: num(firstAdj, 'current_exempt_share_of_capped_wages'),
+  exemptShareReformBase: num(firstAdj, 'reform_exempt_share_of_capped_wages'),
+  governmentShareReformBase: num(firstAdj, 'reform_government_share_of_capped_wages'),
+  /** Per-employer uplift to baseline, reform and additional revenue: [Census weights, model weights]. */
+  baselineUplift: [
+    census.current_per_employer_uplift,
+    num(firstAdj, 'current_even_split_all_wages') / num(firstAdj, 'current_single_cap_all_wages') - 1,
+  ],
+  reformUplift: [
+    census.reform_2026_per_employer_uplift,
+    num(firstAdj, 'reform_even_split_all_wages') / num(firstAdj, 'reform_single_cap_all_wages') - 1,
+  ],
+  additionalUplift: [
+    census.additional_per_employer_uplift,
+    ADJUSTMENTS[0].additionalPerEmployer / RESULTS[0].additional - 1,
+  ],
+  shareWithTwoOrMoreEmployers: census.share_with_two_or_more_employers,
+  meanEmployersPerWageEarner: census.mean_employers_per_wage_earner,
+  w2FormsFiled2024: adj.irs_w2_forms_filed_2024,
+  w2PerWageEarner: adj.irs_w2_forms_filed_2024 / census.wage_earners,
+  tenYearCovered: ADJUSTMENTS.reduce((t, r) => t + r.additionalCovered, 0),
+  tenYearCoveredPerEmployer: ADJUSTMENTS.reduce((t, r) => t + r.additionalCoveredPerEmployer, 0),
+  /** Fiscal-year model vs IRS with both adjustments applied, by fiscal year. */
+  adjustedValidationGaps: adj.validation.map((v) => ({
+    fiscalYear: v.fiscal_year,
+    gap: v.gap_even_split_covered_wages,
+  })),
+};
 
 export function buildCsv(): string {
   const header =

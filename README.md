@@ -12,7 +12,7 @@ All figures are calendar years, flat 0.6% net rate, no behavioral response, FUTA
 - 2026 to 2035: $317.4 billion
 - Wage base path: $43,000 (2026) to $53,200 (2035), CPI-U indexed, rounded to the nearest $100
 
-Two simplifications shape these numbers and are documented on the dashboard: the wage base is applied once per worker rather than once per employer, and wages at FUTA-exempt employers (government, 501(c)(3) nonprofits, and others) stay in the base. The second overstates the estimates by roughly a fifth to a quarter; the first has no fixed sign for the additional-revenue figure.
+Two simplifications shape these numbers: wages at FUTA-exempt employers (government, 501(c)(3) nonprofits, and others) stay in the base, and the wage base is applied once per worker rather than once per employer. `analysis/futa_adjustments.py` measures both by joining raw CPS ASEC employer fields (class of worker, employers last year, wages from other employers) to the model's persons by CPS person id. Exempt employers hold 22.7% of wages under the $43,000 base; removing them lowers the 2026 gain from $26.4 billion to $20.4 billion. Per-employer capping, as the CPS reports employers, raises the gain by 1% to 2%. With both, the 2026 gain is $20.8 billion and the ten-year total $251 billion. The same adjustments put the model 17% below IRS collections, so the unadjusted model's closeness to collections reflects offsetting errors; the CPS reports 1.13 employers per wage earner against about 1.6 Forms W-2 per wage earner in IRS counts.
 
 ## Method
 
@@ -33,6 +33,12 @@ python analysis/futa_wage_base.py
 ```
 
 The first run downloads the certified dataset (about 830 MB) into `data/`. The script writes `analysis/futa_results.json`, `analysis/futa_wage_base_estimates.csv`, and `frontend/lib/results.json`.
+
+```bash
+python analysis/futa_adjustments.py
+```
+
+Downloads the 2023 to 2025 CPS ASEC public-use files from Census (about 150 MB each) into `data/asec/` and writes `analysis/futa_adjustments.json` and `frontend/lib/adjustments.json`.
 
 ### CSV columns
 

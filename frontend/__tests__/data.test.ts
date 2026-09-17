@@ -14,6 +14,8 @@ import {
   NET_RATE,
   buildCsv,
   CSV_FILENAME,
+  ADJUSTMENTS,
+  ADJUSTMENT_SUMMARY,
 } from '@/lib/data';
 import { formatBillions, formatDollars, formatSignedPercent } from '@/lib/format';
 
@@ -144,5 +146,42 @@ describe('formatters', () => {
     expect(formatSignedPercent(0.0353)).toBe('+3.5%');
     expect(formatSignedPercent(-0.0323)).toBe('−3.2%');
     expect(formatSignedPercent(0)).toBe('0.0%');
+  });
+});
+
+describe('measured adjustments (raw ASEC join)', () => {
+  it('adjustments.json is byte-identical to the analysis output', () => {
+    expect(readFileSync(resolve(__dirname, '../lib/adjustments.json'), 'utf8')).toBe(
+      readFileSync(resolve(ANALYSIS, 'futa_adjustments.json'), 'utf8'),
+    );
+  });
+
+  it('matches every model person to a raw ASEC record and reproduces the published series', () => {
+    const adj = JSON.parse(readFileSync(resolve(ANALYSIS, 'futa_adjustments.json'), 'utf8'));
+    expect(adj.asec_match_rate).toBe(1);
+    expect(adj.policyengine_us_version).toBe(MODEL_INFO.policyengineUs);
+    for (const r of RESULTS) {
+      const row = adj.results.find((x: { year: number }) => x.year === r.year);
+      expect(Math.abs(row.current_single_cap_all_wages / r.baseline - 1)).toBeLessThan(1e-6);
+      expect(Math.abs(row.reform_single_cap_all_wages / r.reform - 1)).toBeLessThan(1e-6);
+    }
+  });
+
+  it('orders the adjusted figures as the mechanics require', () => {
+    ADJUSTMENTS.forEach((a, i) => {
+      // Removing exempt wages lowers the gain; per-employer caps never lower revenue levels.
+      expect(a.additionalCovered).toBeLessThan(RESULTS[i].additional);
+      expect(a.additionalCoveredPerEmployer).toBeLessThan(RESULTS[i].additional);
+      expect(a.additionalCovered).toBeGreaterThan(0.7 * RESULTS[i].additional);
+    });
+    const S = ADJUSTMENT_SUMMARY;
+    expect(S.exemptShareReformBase).toBeGreaterThan(0.18);
+    expect(S.exemptShareReformBase).toBeLessThan(0.28);
+    expect(S.governmentShareReformBase).toBeLessThan(S.exemptShareReformBase);
+    for (const u of [...S.baselineUplift, ...S.reformUplift]) expect(u).toBeGreaterThan(0);
+    // Extra employers matter more at the low base than at the high one.
+    expect(S.baselineUplift[0]).toBeGreaterThan(S.reformUplift[0]);
+    expect(S.baselineUplift[1]).toBeGreaterThan(S.reformUplift[1]);
+    expect(S.w2PerWageEarner).toBeGreaterThan(S.meanEmployersPerWageEarner);
   });
 });
