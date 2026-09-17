@@ -6,7 +6,9 @@ import {
   RESULTS,
   FIRST,
   LAST,
-  TEN_YEAR_TOTAL,
+  ADJUSTED_RESULTS,
+  ADJUSTED_FIRST,
+  TEN_YEAR_ADJUSTED,
   VALIDATION,
   MODEL_INFO,
   ADJUSTMENTS,
@@ -15,16 +17,16 @@ import {
 import { formatBillions, formatDollars, formatSignedPercent } from '@/lib/format';
 
 describe('Estimates tab', () => {
-  it('renders headline figures from the data module, not literals', () => {
+  it('renders adjusted headline figures from the data module, not literals', () => {
     render(<Home />);
-    expect(screen.getByText(formatBillions(TEN_YEAR_TOTAL))).toBeInTheDocument();
-    // Headline card and the selected-year card both show the first-year gain.
-    expect(screen.getAllByText(`+${formatBillions(FIRST.additional)}`)).toHaveLength(2);
+    expect(screen.getByText(formatBillions(TEN_YEAR_ADJUSTED))).toBeInTheDocument();
+    // Headline card and the selected-year card both show the adjusted first-year gain.
+    expect(screen.getAllByText(`+${formatBillions(ADJUSTED_FIRST.additional)}`)).toHaveLength(2);
     expect(
       screen.getByText(
         new RegExp(
-          `${formatBillions(FIRST.baseline)} to ${formatBillions(FIRST.reform)}, ${(
-            FIRST.reform / FIRST.baseline
+          `${formatBillions(ADJUSTED_FIRST.baseline)} to ${formatBillions(ADJUSTED_FIRST.reform)}, ${(
+            ADJUSTED_FIRST.reform / ADJUSTED_FIRST.baseline
           ).toFixed(1)} times`.replace(/[$.]/g, '\\$&'),
         ),
       ),
@@ -54,7 +56,11 @@ describe('Estimates tab', () => {
     expect(radios[0]).toBeChecked();
     fireEvent.click(radios[RESULTS.length - 1]);
     expect(radios[RESULTS.length - 1]).toBeChecked();
-    expect(screen.getAllByText(`+${formatBillions(LAST.additional)}`).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        `+${formatBillions(ADJUSTED_RESULTS[ADJUSTED_RESULTS.length - 1].additional)}`,
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   it('moves between tabs with arrow keys', () => {

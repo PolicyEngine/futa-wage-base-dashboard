@@ -17,6 +17,9 @@ import {
   FIRST,
   LAST,
   TEN_YEAR_TOTAL,
+  ADJUSTED_RESULTS,
+  ADJUSTED_FIRST,
+  TEN_YEAR_ADJUSTED,
   MODEL_INFO,
   VALIDATION,
   SURCHARGES,
@@ -160,6 +163,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>('estimates');
   const [selectedYear, setSelectedYear] = useState(FIRST.year);
   const selected = RESULTS.find((r) => r.year === selectedYear) ?? FIRST;
+  const selectedAdjusted =
+    ADJUSTED_RESULTS.find((r) => r.year === selectedYear) ?? ADJUSTED_FIRST;
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     estimates: null,
     validation: null,
@@ -167,7 +172,7 @@ export default function Home() {
   const chartCaptionId = useId();
   const yearLegendId = useId();
 
-  const chartData = RESULTS.map((r) => ({
+  const chartData = ADJUSTED_RESULTS.map((r) => ({
     year: r.year,
     Baseline: r.baseline,
     'Additional revenue': r.additional,
@@ -178,7 +183,7 @@ export default function Home() {
   const increasePerAffected = selected.additional / selected.workersAbove7k;
   const avgPerAffected = basePerWorker + increasePerAffected;
   const affectedShare = selected.workersAbove7k / selected.workersWithWages;
-  const reformMultiple = FIRST.reform / FIRST.baseline;
+  const reformMultiple = ADJUSTED_FIRST.reform / ADJUSTED_FIRST.baseline;
 
   const S = ADJUSTMENT_SUMMARY;
   const gapLabels = S.adjustedValidationGaps.map((g) => formatPercent(Math.abs(g.gap), 0));
@@ -279,6 +284,17 @@ export default function Home() {
                   the base reaches {formatDollars(LAST.wageBase)} in {LAST.year}.
                 </p>
                 <p>
+                  The estimates on this tab adjust the model&apos;s output for two corrections
+                  measured from workers&apos; Census survey responses: wages at FUTA-exempt
+                  employers (government agencies and nonprofits, about{' '}
+                  {formatPercent(S.exemptShareReformBase, 0)} of wages under the{' '}
+                  {formatDollars(FIRST.wageBase)} base) are removed, and the wage base applies
+                  per employer rather than per worker, as the law does. Before these adjustments
+                  the model&apos;s output is {formatBillions(FIRST.additional)} in {FIRST.year}{' '}
+                  and {formatBillions(TEN_YEAR_TOTAL)} over ten years; both series appear in the
+                  CSV, and the Validation and methods tab documents the adjustments.
+                </p>
+                <p>
                   All years on this tab are calendar (tax) years. The estimates count only the
                   FUTA line; state unemployment taxes, which would also rise because states must
                   match the federal base, are discussed under Validation and methods.
@@ -292,10 +308,11 @@ export default function Home() {
                     Additional revenue, {FIRST.year} to {LAST.year}
                   </p>
                   <p className="text-3xl font-bold text-teal-600 tabular-nums">
-                    {formatBillions(TEN_YEAR_TOTAL)}
+                    {formatBillions(TEN_YEAR_ADJUSTED)}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Ten calendar years; assumes wages do not respond to the tax
+                    Ten calendar years; assumes wages do not respond to the tax (
+                    {formatBillions(TEN_YEAR_TOTAL)} before adjustments)
                   </p>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
@@ -303,12 +320,12 @@ export default function Home() {
                     First year ({FIRST.year})
                   </p>
                   <p className="text-3xl font-bold text-gray-900 tabular-nums">
-                    +{formatBillions(FIRST.additional)}
+                    +{formatBillions(ADJUSTED_FIRST.additional)}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    FUTA revenue rises from {formatBillions(FIRST.baseline)} to{' '}
-                    {formatBillions(FIRST.reform)}, {reformMultiple.toFixed(1)} times the
-                    current-law level
+                    FUTA revenue rises from {formatBillions(ADJUSTED_FIRST.baseline)} to{' '}
+                    {formatBillions(ADJUSTED_FIRST.reform)}, {reformMultiple.toFixed(1)} times
+                    the current-law level
                   </p>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
@@ -375,7 +392,7 @@ export default function Home() {
                     Additional revenue
                   </p>
                   <p className="text-2xl font-bold text-teal-600 tabular-nums">
-                    +{formatBillions(selected.additional)}
+                    +{formatBillions(selectedAdjusted.additional)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">vs. current law in {selected.year}</p>
                 </div>
@@ -397,7 +414,7 @@ export default function Home() {
                     Baseline revenue
                   </p>
                   <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                    {formatBillions(selected.baseline)}
+                    {formatBillions(selectedAdjusted.baseline)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {formatDollars(CURRENT_BASE)} base, 0.6% net rate
@@ -408,10 +425,11 @@ export default function Home() {
                     Reform revenue
                   </p>
                   <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                    {formatBillions(selected.reform)}
+                    {formatBillions(selectedAdjusted.reform)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {(selected.reform / selected.baseline).toFixed(1)} times baseline
+                    {(selectedAdjusted.reform / selectedAdjusted.baseline).toFixed(1)} times
+                    baseline
                   </p>
                 </div>
               </div>
@@ -426,16 +444,18 @@ export default function Home() {
                 workers earning more than {formatDollars(CURRENT_BASE)} ({formatPercent(affectedShare, 0)}{' '}
                 of the {formatMillions(selected.workersWithWages)} people with any wages), the
                 liability would be {formatDollars(avgPerAffected)} per worker, up{' '}
-                {formatDollars(increasePerAffected)} from today.
+                {formatDollars(increasePerAffected)} from today. The per-worker averages use the
+                unadjusted series, which includes workers at exempt employers.
               </p>
 
               {/* Chart */}
               <figure className="relative" aria-labelledby={chartCaptionId}>
                 <figcaption id={chartCaptionId} className="sr-only">
                   FUTA revenue by calendar year, {FIRST.year} to {LAST.year}, in billions of
-                  dollars: revenue at the current {formatDollars(CURRENT_BASE)} base plus the
-                  additional revenue from the {formatDollars(FIRST.wageBase)} indexed base. The
-                  CSV download has the underlying numbers.
+                  dollars, with the exempt-employer and per-employer adjustments applied:
+                  revenue at the current {formatDollars(CURRENT_BASE)} base plus the additional
+                  revenue from the {formatDollars(FIRST.wageBase)} indexed base. The CSV
+                  download has the underlying numbers, adjusted and unadjusted.
                 </figcaption>
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart
@@ -493,11 +513,14 @@ export default function Home() {
               </h2>
               <div className="space-y-3 text-gray-700">
                 <p>
-                  The Estimates tab&apos;s baseline is FUTA revenue at the current{' '}
-                  {formatDollars(CURRENT_BASE)} wage base with every employer at the full 5.4%
-                  credit, {formatBillionsLong(FIRST.baseline)} in {FIRST.year}. The reform
-                  applies the same 0.6% net rate, so the additional-revenue figure isolates the
-                  wage-base change.
+                  The model computes FUTA revenue at the current {formatDollars(CURRENT_BASE)}{' '}
+                  wage base with every employer at the full 5.4% credit,{' '}
+                  {formatBillionsLong(FIRST.baseline)} in {FIRST.year} before adjustments. The
+                  reform applies the same 0.6% net rate, so the additional-revenue figure
+                  isolates the wage-base change. The Estimates tab applies the two adjustments
+                  measured in the next section. The cards below compare the unadjusted output
+                  with collections; with both adjustments applied the model runs{' '}
+                  {adjustedGapText}, and the next section explains why.
                 </p>
                 <p>
                   IRS collections run higher. They include penalties and interest, and they
@@ -593,7 +616,7 @@ export default function Home() {
                     {formatDollars(CURRENT_BASE)} base and {formatPercent(S.exemptShareReformBase)}{' '}
                     under the {formatDollars(FIRST.wageBase)} base (government alone,{' '}
                     {formatPercent(S.governmentShareReformBase)}). Removing those wages lowers
-                    the {FIRST.year} gain from {formatBillions(FIRST.additional)} to{' '}
+                    the unadjusted {FIRST.year} gain from {formatBillions(FIRST.additional)} to{' '}
                     {formatBillions(ADJUSTMENTS[0].additionalCovered)} and the ten-year total
                     from {formatBillions(TEN_YEAR_TOTAL)} to {formatBillions(S.tenYearCovered)}.
                     The survey&apos;s nonprofit category is broader than 501(c)(3), and the
@@ -626,7 +649,8 @@ export default function Home() {
               <p className="text-sm text-gray-700 mt-4">
                 With both adjustments the {FIRST.year} gain is{' '}
                 {formatBillions(ADJUSTMENTS[0].additionalCoveredPerEmployer)} and the ten-year
-                total {formatBillions(S.tenYearCoveredPerEmployer)}, against the headline{' '}
+                total {formatBillions(S.tenYearCoveredPerEmployer)}; these are the headline
+                figures on the Estimates tab. The unadjusted model output is{' '}
                 {formatBillions(FIRST.additional)} and {formatBillions(TEN_YEAR_TOTAL)}.
               </p>
               <p className="text-sm text-gray-600 mt-3">
@@ -705,9 +729,10 @@ export default function Home() {
                     base.
                   </li>
                   <li>
-                    The wage base applies once per worker per year, not per employer, and wages
-                    at FUTA-exempt employers stay in the base (see the two simplifications
-                    above).
+                    The headline estimates remove wages at FUTA-exempt employers and apply the
+                    wage base per employer, both as measured from workers&apos; CPS responses
+                    (see the two simplifications above); the unadjusted model output applies one
+                    cap per worker and keeps exempt wages in the base.
                   </li>
                   <li>Wages do not change in response to the tax.</li>
                   <li>

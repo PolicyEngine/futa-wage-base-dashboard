@@ -6,13 +6,13 @@ Estimates the FUTA revenue from raising the federal unemployment taxable wage ba
 
 ## Results
 
-All figures are calendar years, flat 0.6% net rate, no behavioral response, FUTA line only (state unemployment taxes, which federal law would also raise, are not counted).
+All figures are calendar years, flat 0.6% net rate, no behavioral response, FUTA line only (state unemployment taxes, which federal law would also raise, are not counted). The headline series adjusts the model output for its two measured simplifications (below); the unadjusted model output is shown alongside it and in the CSV.
 
-- 2026: +$26.4 billion (baseline $6.8 billion at the $7,000 base; $33.3 billion at $43,000)
-- 2026 to 2035: $317.4 billion
+- 2026: +$20.8 billion (adjusted; $26.4 billion unadjusted)
+- 2026 to 2035: $251.1 billion (adjusted; $317.4 billion unadjusted)
 - Wage base path: $43,000 (2026) to $53,200 (2035), CPI-U indexed, rounded to the nearest $100
 
-Two simplifications shape these numbers: wages at FUTA-exempt employers (government, 501(c)(3) nonprofits, and others) stay in the base, and the wage base is applied once per worker rather than once per employer. `analysis/futa_adjustments.py` measures both by joining raw CPS ASEC employer fields (class of worker, employers last year, wages from other employers) to the model's persons by CPS person id. Exempt employers hold 22.7% of wages under the $43,000 base; removing them lowers the 2026 gain from $26.4 billion to $20.4 billion. Per-employer capping, as the CPS reports employers, raises the gain by 1% to 2%. With both, the 2026 gain is $20.8 billion and the ten-year total $251 billion. The same adjustments put the model 17% below IRS collections, so the unadjusted model's closeness to collections reflects offsetting errors; the CPS reports 1.13 employers per wage earner against about 1.6 Forms W-2 per wage earner in IRS counts.
+The two simplifications: wages at FUTA-exempt employers (government, 501(c)(3) nonprofits, and others) stay in the model's base, and the wage base is applied once per worker rather than once per employer. `analysis/futa_adjustments.py` measures both by joining raw CPS ASEC employer fields (class of worker, employers last year, wages from other employers) to the model's persons by CPS person id, and the headline applies both adjustments. Exempt employers hold 22.7% of wages under the $43,000 base; removing them lowers the 2026 gain from $26.4 billion to $20.4 billion. Per-employer capping, as the CPS reports employers, raises the gain by 1% to 2%. The same adjustments put the model 17% below IRS collections, so the unadjusted model's closeness to collections reflects offsetting errors; the CPS reports 1.13 employers per wage earner against about 1.6 Forms W-2 per wage earner in IRS counts.
 
 ## Method
 
@@ -47,9 +47,12 @@ Downloads the 2023 to 2025 CPS ASEC public-use files from Census (about 150 MB e
 | `calendar_year` | Tax year of the simulation |
 | `taxable_wage_base_usd` | FUTA wage base under the reform |
 | `cpi_u_prior_year_average` | Calendar-year average CPI-U for the prior year that set the base |
-| `baseline_revenue_usd` | FUTA revenue at the $7,000 base, 0.6% net rate |
-| `reform_revenue_usd` | FUTA revenue at the reform base, 0.6% net rate |
-| `additional_revenue_usd` | Reform minus baseline |
+| `adjusted_baseline_revenue_usd` | FUTA revenue at the $7,000 base, 0.6% net rate, both adjustments applied |
+| `adjusted_reform_revenue_usd` | FUTA revenue at the reform base, 0.6% net rate, both adjustments applied |
+| `adjusted_additional_revenue_usd` | Reform minus baseline (adjusted; the headline series) |
+| `unadjusted_baseline_revenue_usd` | Model output before the adjustments |
+| `unadjusted_reform_revenue_usd` | Model output before the adjustments |
+| `unadjusted_additional_revenue_usd` | Model output before the adjustments |
 | `workers_with_wages` | People with any modeled wages in the year |
 | `workers_with_wages_above_7000` | People with modeled wages above $7,000 |
 

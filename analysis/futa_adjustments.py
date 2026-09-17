@@ -29,6 +29,9 @@ wages capped per employer, under two readings of how those wages divide:
 * ``even_split``: they divide evenly across PHMEMPRS - 1 employers, counting
   "three or more" as three (largest effect for the reported employer count).
 
+The two readings differ by under 1% of revenue at the $7,000 base and under
+0.2% at $43,000, so the page reports ``even_split`` only.
+
 Exempt employers. A worker's wages are treated as FUTA-exempt when the longest
 job is in federal, state or local government (LJCW 2-4), or when the longest
 job is private (LJCW 1) and the March job is private nonprofit (PEIO1COW 5).
@@ -405,3 +408,37 @@ for path in (OUT, FRONTEND_OUT):
         json.dump(output, f, indent=2)
         f.write("\n")
     print("wrote", path, flush=True)
+
+
+# The dashboard's CSV: the adjusted (headline) series first, the unadjusted
+# model output second. Must stay byte-identical to frontend buildCsv().
+def _round(x: float) -> int:
+    """Math.round semantics for the non-negative values written here."""
+    return int(x + 0.5)
+
+
+csv_out = os.path.join(HERE, "futa_wage_base_estimates.csv")
+with open(csv_out, "w", newline="") as f:
+    f.write(
+        "calendar_year,taxable_wage_base_usd,cpi_u_prior_year_average,"
+        "adjusted_baseline_revenue_usd,adjusted_reform_revenue_usd,"
+        "adjusted_additional_revenue_usd,"
+        "unadjusted_baseline_revenue_usd,unadjusted_reform_revenue_usd,"
+        "unadjusted_additional_revenue_usd,workers_with_wages,"
+        "workers_with_wages_above_7000\n"
+    )
+    for year in sorted(y for y in published if published[y].get("wage_base")):
+        p = published[year]
+        a = by_year[year]
+        adj_base = a["current_even_split_covered_wages"]
+        adj_reform = a["reform_even_split_covered_wages"]
+        f.write(
+            f"{year},{p['wage_base']},{p['cpi_u_prior_year_average']:.3f},"
+            f"{_round(adj_base)},{_round(adj_reform)},{_round(adj_reform - adj_base)},"
+            f"{_round(p['baseline_revenue_flat_06'])},"
+            f"{_round(p['reform_revenue_flat_06'])},"
+            f"{_round(p['additional_revenue_flat_06'])},"
+            f"{_round(p['workers_with_wages'])},"
+            f"{_round(p['workers_above_current_base'])}\n"
+        )
+print("wrote", csv_out, flush=True)
