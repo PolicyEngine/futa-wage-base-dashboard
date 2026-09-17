@@ -2,7 +2,7 @@
 
 Estimates the FUTA revenue from raising the federal unemployment taxable wage base from $7,000 to $43,000 in 2026 and indexing it to the CPI-U thereafter, holding the 6.0% statutory rate and the maximum 5.4% state-tax credit (0.6% net) constant. The $43,000 figure is roughly the 2023 median annual wage of U.S. workers ($43,222.81, [SSA net compensation statistics](https://www.ssa.gov/cgi-bin/netcomp.cgi?year=2023)).
 
-**Live:** https://futa-wage-base-dashboard.vercel.app/us/futa-wage-base-dashboard
+**Live:** https://policyengine.org/us/futa-wage-base-dashboard (also served at https://futa-wage-base-dashboard.vercel.app/us/futa-wage-base-dashboard)
 
 ## Results
 
@@ -63,7 +63,7 @@ NEXT_PUBLIC_BASE_PATH="" bun run dev
 
 `bun run lint`, `bun run typecheck`, `bun run test`, and `bun run build` run in CI on every pull request.
 
-Production serves under the `/us/futa-wage-base-dashboard` base path for the policyengine.org multi-zone setup. Canonical and share URLs derive from the Vercel production URL until `NEXT_PUBLIC_SITE_URL` is set to the policyengine.org mount.
+Production serves under the `/us/futa-wage-base-dashboard` base path for the policyengine.org multi-zone setup. `NEXT_PUBLIC_SITE_URL` (set in Vercel to the policyengine.org mount) drives the canonical, share and sitemap URLs; without it they derive from the Vercel production URL.
 
 ## Deploy
 
