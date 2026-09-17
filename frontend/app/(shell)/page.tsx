@@ -23,8 +23,8 @@ import {
   CPI_REFERENCE,
   CURRENT_BASE,
   NET_RATE,
-  EXEMPT_SHARE_LOW,
-  EXEMPT_SHARE_HIGH,
+  ADJUSTMENTS,
+  ADJUSTMENT_SUMMARY,
   buildCsv,
   CSV_FILENAME,
 } from '@/lib/data';
@@ -119,8 +119,12 @@ const SOURCES = [
     text: '26 U.S.C. 3306, FUTA definitions (exempt employment in subsection (c))',
   },
   {
-    href: 'https://www.bls.gov/ces/',
-    text: 'BLS, Current Employment Statistics (government and total nonfarm employment)',
+    href: 'https://www.census.gov/data/datasets/time-series/demo/cps/cps-asec.html',
+    text: 'Census Bureau, Current Population Survey Annual Social and Economic Supplement, 2023 to 2025 public-use files (employers last year, class of worker, wages by employer)',
+  },
+  {
+    href: 'https://www.irs.gov/pub/irs-pdf/p6961.pdf',
+    text: 'IRS Publication 6961, Calendar year projections of information and withholding documents (Forms W-2 filed in 2024)',
   },
   {
     href: 'https://www.bls.gov/bdm/nonprofits/nonprofits.htm',
@@ -176,6 +180,13 @@ export default function Home() {
   const affectedShare = selected.workersAbove7k / selected.workersWithWages;
   const reformMultiple = FIRST.reform / FIRST.baseline;
 
+  const S = ADJUSTMENT_SUMMARY;
+  const gapLabels = S.adjustedValidationGaps.map((g) => formatPercent(Math.abs(g.gap), 0));
+  const adjustedGapText = gapLabels.every((g) => g === gapLabels[0])
+    ? `${gapLabels[0]} below in fiscal ${S.adjustedValidationGaps.map((g) => g.fiscalYear).join(' and ')}`
+    : S.adjustedValidationGaps
+        .map((g, i) => `${gapLabels[i]} below in fiscal ${g.fiscalYear}`)
+        .join(' and ');
   const surcharge2024 = SURCHARGES[2024];
   const surcharge2025 = SURCHARGES[2025];
 
@@ -554,9 +565,10 @@ export default function Home() {
               </div>
 
               <p className="text-sm text-gray-600 mt-3">
-                The model runs a few percent below collections in both years. Two things it
-                leaves out push in opposite directions (next section); penalties and interest,
-                which the IRS does not break out, are also in the IRS line and not in the model.
+                The model runs a few percent below collections in both years. Two
+                simplifications with opposite effects on baseline revenue sit behind that figure
+                (next section). Penalties and interest, which the IRS does not break out, are in
+                the IRS line and not in the model.
               </p>
             </section>
 
@@ -569,47 +581,66 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-5">
                   <p className="text-sm font-bold text-gray-900 mb-2">
-                    One wage base per worker, not per employer
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    FUTA applies the wage base separately to each employee at each employer. The
-                    model applies a single cap to each worker&apos;s total annual wages across all
-                    jobs, because the data record how much a person earned, not how many
-                    employers paid them. This understates the revenue level under both the{' '}
-                    {formatDollars(CURRENT_BASE)} and the {formatDollars(FIRST.wageBase)} base.
-                    Its effect on the additional-revenue figure can go either way: a worker with
-                    two $7,000 jobs adds $7,000 of taxable base in the model but none in reality,
-                    while a worker with two $30,000 jobs adds $36,000 in the model and $46,000
-                    in reality. The dataset cannot bound this effect.
-                  </p>
-                </div>
-                <div className="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-5">
-                  <p className="text-sm font-bold text-gray-900 mb-2">
                     Wages at FUTA-exempt employers are included
                   </p>
                   <p className="text-sm text-gray-700">
                     Federal, state, local and tribal governments, 501(c)(3) nonprofits, railroads,
                     and small farm and household employers are exempt from FUTA, but their
-                    employees&apos; wages stay in the model&apos;s tax base. Government and
-                    501(c)(3) employers alone account for about 23% of nonfarm jobs (BLS: 23.4
-                    million government jobs in 2024; 12.8 million 501(c)(3) jobs in 2022). If
-                    their share of wages under the cap is similar, the estimates are overstated
-                    by roughly a fifth to a quarter: the {FIRST.year} gain would be{' '}
-                    {formatBillions(FIRST.additional * (1 - EXEMPT_SHARE_HIGH))} to{' '}
-                    {formatBillions(FIRST.additional * (1 - EXEMPT_SHARE_LOW))} rather than{' '}
-                    {formatBillions(FIRST.additional)}, and the ten-year total{' '}
-                    {formatBillions(TEN_YEAR_TOTAL * (1 - EXEMPT_SHARE_HIGH))} to{' '}
-                    {formatBillions(TEN_YEAR_TOTAL * (1 - EXEMPT_SHARE_LOW))} rather than{' '}
-                    {formatBillions(TEN_YEAR_TOTAL)}.
+                    employees&apos; wages stay in the model&apos;s tax base. Workers&apos; own
+                    reports of their employer type in the Census Bureau&apos;s Current Population
+                    Survey put government and private nonprofit employers at{' '}
+                    {formatPercent(S.exemptShareCurrentBase)} of wages under the{' '}
+                    {formatDollars(CURRENT_BASE)} base and {formatPercent(S.exemptShareReformBase)}{' '}
+                    under the {formatDollars(FIRST.wageBase)} base (government alone,{' '}
+                    {formatPercent(S.governmentShareReformBase)}). Removing those wages lowers
+                    the {FIRST.year} gain from {formatBillions(FIRST.additional)} to{' '}
+                    {formatBillions(ADJUSTMENTS[0].additionalCovered)} and the ten-year total
+                    from {formatBillions(TEN_YEAR_TOTAL)} to {formatBillions(S.tenYearCovered)}.
+                    The survey&apos;s nonprofit category is broader than 501(c)(3), and the
+                    smaller exempt groups cannot be identified in it.
+                  </p>
+                </div>
+                <div className="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-5">
+                  <p className="text-sm font-bold text-gray-900 mb-2">
+                    One wage base per worker, not per employer
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    FUTA applies the wage base separately to each employee at each employer. The
+                    model applies a single cap to each worker&apos;s total annual wages. The
+                    survey asks how many employers each worker had and how much they earned
+                    outside their main job:{' '}
+                    {formatPercent(S.shareWithTwoOrMoreEmployers, 0)} of wage earners report two
+                    or more employers. Capping those wages per employer raises baseline revenue
+                    by {formatPercent(S.baselineUplift[0], 0)} to{' '}
+                    {formatPercent(S.baselineUplift[1], 0)} and reform revenue by{' '}
+                    {formatPercent(S.reformUplift[0], 0)} to {formatPercent(S.reformUplift[1], 0)},
+                    so the additional-revenue figure rises by{' '}
+                    {formatPercent(S.additionalUplift[0], 0)} to{' '}
+                    {formatPercent(S.additionalUplift[1], 0)}. The range runs from Census survey
+                    weights to this model&apos;s weights, which over-represent workers with
+                    several employers.
                   </p>
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 mt-4">
-                The exempt-employer simplification overstates both the baseline and the additional
-                revenue and can be bounded from public data. The single-cap simplification
-                understates revenue levels but has no fixed sign for the additional-revenue
-                figure, and the data cannot size it.
+              <p className="text-sm text-gray-700 mt-4">
+                With both adjustments the {FIRST.year} gain is{' '}
+                {formatBillions(ADJUSTMENTS[0].additionalCoveredPerEmployer)} and the ten-year
+                total {formatBillions(S.tenYearCoveredPerEmployer)}, against the headline{' '}
+                {formatBillions(FIRST.additional)} and {formatBillions(TEN_YEAR_TOTAL)}.
+              </p>
+              <p className="text-sm text-gray-600 mt-3">
+                The same two adjustments move the fiscal-year comparison above from a few percent
+                below IRS collections to{' '}
+                {adjustedGapText}
+                , so the unadjusted model&apos;s closeness to collections reflects two errors that
+                offset. The remaining shortfall points at employers per worker: the survey counts
+                simultaneous jobs as one employer and reports{' '}
+                {S.meanEmployersPerWageEarner.toFixed(2)} employers per wage earner, while
+                employers filed {formatMillions(S.w2FormsFiled2024)} Forms W-2 in 2024, about{' '}
+                {S.w2PerWageEarner.toFixed(1)} per wage earner. More employers per worker raises
+                revenue at the {formatDollars(CURRENT_BASE)} base far more than at the{' '}
+                {formatDollars(FIRST.wageBase)} base.
               </p>
             </section>
 

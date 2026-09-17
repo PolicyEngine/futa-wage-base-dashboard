@@ -52,7 +52,6 @@ import importlib.metadata as md
 import json
 import math
 import os
-import re
 from datetime import date
 
 import policyengine as pe
@@ -108,7 +107,9 @@ LAST_OBSERVED = max(d for d in INSTANTS if d.month != 2)
 # CBO calendar-year averages: February instants after the last observation,
 # stored under the following tax year. "2027-02-01: 340.3 # 2028 value" is
 # CBO's calendar-2027 average, so key it by its own calendar year.
-CBO_CY_AVG = {d.year: v for d, v in INSTANTS.items() if d.month == 2 and d > LAST_OBSERVED}
+CBO_CY_AVG = {
+    d.year: v for d, v in INSTANTS.items() if d.month == 2 and d > LAST_OBSERVED
+}
 
 
 def observed(year: int, month: int) -> float | None:
@@ -177,7 +178,9 @@ for year in sorted(set(BENCH_YEARS + YEARS)):
         # credit-reduction rates to the 2024 wage distribution.
         wages = sim.calc("payroll_tax_gross_wages", period=DATASET_YEAR)
         state = sim.calc("state_code", period=DATASET_YEAR, map_to="person").values
-        rates = params(f"{year}-01-01").gov.irs.payroll.federal_unemployment.credit_reduction_rate
+        rates = params(
+            f"{year}-01-01"
+        ).gov.irs.payroll.federal_unemployment.credit_reduction_rate
         rate_by_state = {s: float(rates[s]) for s in set(state)}
         add_on = wages.clip(upper=CURRENT_BASE) * [rate_by_state[s] for s in state]
         approximations[str(year)] = {
@@ -195,7 +198,9 @@ for year in sorted(set(BENCH_YEARS + YEARS)):
     row = {
         "year": year,
         "weighted_persons": pop,
-        "baseline_revenue_flat_06": float((wages.clip(upper=CURRENT_BASE) * FLAT_RATE).sum()),
+        "baseline_revenue_flat_06": float(
+            (wages.clip(upper=CURRENT_BASE) * FLAT_RATE).sum()
+        ),
         "workers_with_wages": float(((wages > 0) * 1.0).sum()),
         "workers_above_current_base": float(((wages > CURRENT_BASE) * 1.0).sum()),
     }
@@ -203,12 +208,15 @@ for year in sorted(set(BENCH_YEARS + YEARS)):
         rate = sim.calc("employer_federal_unemployment_tax_rate", period=year)
         statutory = float((wages.clip(upper=CURRENT_BASE) * rate).sum())
         # Should equal the model's own FUTA variable; confirms the formula.
-        model_check = float(sim.calc("employer_federal_unemployment_tax", period=year).sum())
+        model_check = float(
+            sim.calc("employer_federal_unemployment_tax", period=year).sum()
+        )
         row.update(
             {
                 "baseline_revenue_statutory": statutory,
                 "model_futa_variable_check": model_check,
-                "credit_reduction_surcharge": statutory - row["baseline_revenue_flat_06"],
+                "credit_reduction_surcharge": statutory
+                - row["baseline_revenue_flat_06"],
             }
         )
     if year in YEARS:
@@ -248,7 +256,9 @@ for fy in (2024, 2025):
             "model_flat_06_calendar_year": rows[fy]["baseline_revenue_flat_06"],
             "model_surcharge_prior_calendar_year": surcharge_prior,
             "model_surcharge_prior_calendar_year_basis": basis,
-            "model_statutory_same_calendar_year": rows[fy].get("baseline_revenue_statutory"),
+            "model_statutory_same_calendar_year": rows[fy].get(
+                "baseline_revenue_statutory"
+            ),
         }
     )
 
