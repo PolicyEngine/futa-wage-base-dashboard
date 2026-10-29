@@ -2,7 +2,7 @@
 
 Estimates the FUTA revenue from raising the federal unemployment taxable wage base from $7,000 to $43,000 in 2026 and indexing it to the CPI-U thereafter, holding the 6.0% statutory rate and the maximum 5.4% state-tax credit (0.6% net) constant. The $43,000 figure is roughly the 2023 median annual wage of U.S. workers ($43,222.81, [SSA net compensation statistics](https://www.ssa.gov/cgi-bin/netcomp.cgi?year=2023)).
 
-**Live:** https://policyengine.org/us/futa-wage-base-dashboard (also served at https://futa-wage-base-dashboard.vercel.app/us/futa-wage-base-dashboard)
+**Live:** https://policyengine.org/us/futa-wage-base-dashboard
 
 ## Results
 
